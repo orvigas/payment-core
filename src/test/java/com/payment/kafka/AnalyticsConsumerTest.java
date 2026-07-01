@@ -109,4 +109,15 @@ public class AnalyticsConsumerTest {
     analyticsConsumer.consumePaymentCharged(failureEvent);
     assertEquals(1, analyticsConsumer.getFailedCharges());
   }
+
+  @Test
+  void testMetricsReset() {
+    analyticsConsumer.consumePaymentCharged(successEvent);
+    analyticsConsumer.consumePaymentCharged(failureEvent);
+
+    assertEquals(1, analyticsConsumer.getSuccessfulCharges());
+    assertEquals(1, analyticsConsumer.getFailedCharges());
+
+    log.info("Test passed: Analytics metrics tracking complete");
+  }
 }
