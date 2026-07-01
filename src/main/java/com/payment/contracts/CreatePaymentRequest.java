@@ -2,6 +2,7 @@ package com.payment.contracts;
 
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Immutable data contract for creating a payment.
@@ -18,20 +19,25 @@ import java.math.BigDecimal;
  * @version 1.0.0
  */
 public record CreatePaymentRequest(
+    @Schema(description = "Unique identifier of the user initiating the payment", example = "user-12345")
     @NotBlank(message = "User ID is required")
     String userId,
 
+    @Schema(description = "Transaction amount in the specified currency", example = "99.99")
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     BigDecimal amount,
 
+    @Schema(description = "ISO 4217 three-letter currency code", example = "USD")
     @NotBlank(message = "Currency is required")
     @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be 3-letter ISO code")
     String currency,
 
+    @Schema(description = "Identifier of the merchant receiving the payment", example = "merchant-789")
     @NotBlank(message = "Merchant is required")
     String merchant,
 
+    @Schema(description = "Optional description of the payment purpose", example = "Purchase of premium subscription")
     @Size(max = 255, message = "Description cannot exceed 255 characters")
     String description
 ) {}

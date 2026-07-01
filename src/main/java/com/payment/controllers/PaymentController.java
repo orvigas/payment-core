@@ -9,6 +9,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * REST Controller for payment operations.
@@ -23,6 +28,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Payments", description = "Payment creation, retrieval, confirmation, and refund operations")
 public class PaymentController {
 
   private final PaymentService paymentService;
@@ -35,6 +41,12 @@ public class PaymentController {
    * @return ResponseEntity with HTTP 201 (Created) status and the created payment response
    */
   @PostMapping
+  @Operation(
+      summary = "Create a new payment",
+      description = "Initiates a new payment transaction with the provided details. The payment is created in PENDING status and will be processed asynchronously.")
+  @ApiResponse(responseCode = "201", description = "Payment created successfully")
+  @ApiResponse(responseCode = "400", description = "Invalid request payload (validation error)")
+  @ApiResponse(responseCode = "500", description = "Internal server error")
   public ResponseEntity<PaymentResponse> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
     log.info("POST /api/v1/payments - Creating payment");
     PaymentResponse response = paymentService.createPayment(request);
@@ -48,7 +60,14 @@ public class PaymentController {
    * @return ResponseEntity with HTTP 200 (OK) status and the payment details
    */
   @GetMapping("/{paymentId}")
-  public ResponseEntity<PaymentResponse> getPayment(@PathVariable String paymentId) {
+  @Operation(
+      summary = "Retrieve a payment",
+      description = "Fetches the details of a specific payment transaction by its unique identifier.")
+  @ApiResponse(responseCode = "200", description = "Payment retrieved successfully")
+  @ApiResponse(responseCode = "404", description = "Payment not found")
+  @ApiResponse(responseCode = "500", description = "Internal server error")
+  public ResponseEntity<PaymentResponse> getPayment(
+      @Parameter(description = "Unique identifier of the payment (UUID)") @PathVariable String paymentId) {
     log.info("GET /api/v1/payments/{} - Fetching payment", paymentId);
     PaymentResponse response = paymentService.getPayment(paymentId);
     return ResponseEntity.ok(response);
@@ -61,7 +80,15 @@ public class PaymentController {
    * @return ResponseEntity with HTTP 200 (OK) status and the updated payment details
    */
   @PostMapping("/{paymentId}/confirm")
-  public ResponseEntity<PaymentResponse> confirmPayment(@PathVariable String paymentId) {
+  @Operation(
+      summary = "Confirm a payment",
+      description = "Transitions a PENDING payment to PROCESSING status. The payment will then be charged and processed asynchronously.")
+  @ApiResponse(responseCode = "200", description = "Payment confirmed successfully")
+  @ApiResponse(responseCode = "404", description = "Payment not found")
+  @ApiResponse(responseCode = "400", description = "Payment cannot be confirmed (invalid status)")
+  @ApiResponse(responseCode = "500", description = "Internal server error")
+  public ResponseEntity<PaymentResponse> confirmPayment(
+      @Parameter(description = "Unique identifier of the payment (UUID)") @PathVariable String paymentId) {
     log.info("POST /api/v1/payments/{}/confirm - Confirming payment", paymentId);
     PaymentResponse response = paymentService.confirmPayment(paymentId);
     return ResponseEntity.ok(response);
@@ -74,7 +101,15 @@ public class PaymentController {
    * @return ResponseEntity with HTTP 200 (OK) status and the updated payment details
    */
   @PostMapping("/{paymentId}/refund")
-  public ResponseEntity<PaymentResponse> refundPayment(@PathVariable String paymentId) {
+  @Operation(
+      summary = "Refund a payment",
+      description = "Initiates a refund for a COMPLETED payment. The refund will be processed asynchronously and the payment status will transition to REFUNDED.")
+  @ApiResponse(responseCode = "200", description = "Refund initiated successfully")
+  @ApiResponse(responseCode = "404", description = "Payment not found")
+  @ApiResponse(responseCode = "400", description = "Payment cannot be refunded (invalid status)")
+  @ApiResponse(responseCode = "500", description = "Internal server error")
+  public ResponseEntity<PaymentResponse> refundPayment(
+      @Parameter(description = "Unique identifier of the payment (UUID)") @PathVariable String paymentId) {
     log.info("POST /api/v1/payments/{}/refund - Refunding payment", paymentId);
     PaymentResponse response = paymentService.refundPayment(paymentId);
     return ResponseEntity.ok(response);

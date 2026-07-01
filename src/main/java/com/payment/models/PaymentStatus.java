@@ -1,5 +1,7 @@
 package com.payment.models;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Enumeration of payment statuses representing the lifecycle of a payment transaction.
  *
@@ -15,15 +17,21 @@ package com.payment.models;
  * @author Orlando Villegas (orvigas@gmail.com)
  * @version 1.0.0
  */
+@Schema(description = "Payment status in its lifecycle")
 public enum PaymentStatus {
   /** Payment has been created and awaits confirmation. */
+  @Schema(description = "Payment has been created and awaits confirmation")
   PENDING,
   /** Payment is currently being processed. */
+  @Schema(description = "Payment is currently being processed")
   PROCESSING,
   /** Payment has been successfully completed. */
+  @Schema(description = "Payment has been successfully completed")
   COMPLETED,
   /** Payment processing failed. */
+  @Schema(description = "Payment processing failed")
   FAILED,
   /** Payment has been refunded to the user. */
+  @Schema(description = "Payment has been refunded to the user")
   REFUNDED
 }
