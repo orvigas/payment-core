@@ -1,10 +1,10 @@
 package com.payment.service;
 
 import com.payment.contracts.CreatePaymentRequest;
-import com.payment.entity.Payment;
-import com.payment.entity.PaymentStatus;
-import com.payment.exception.InvalidPaymentException;
-import com.payment.exception.PaymentNotFoundException;
+import com.payment.models.Payment;
+import com.payment.models.PaymentStatus;
+import com.payment.exceptions.InvalidPaymentException;
+import com.payment.exceptions.PaymentNotFoundException;
 import com.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

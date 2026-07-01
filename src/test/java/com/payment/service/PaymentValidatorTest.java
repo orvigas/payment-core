@@ -1,7 +1,7 @@
 package com.payment.service;
 
 import com.payment.contracts.CreatePaymentRequest;
-import com.payment.exception.InvalidPaymentException;
+import com.payment.exceptions.InvalidPaymentException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;

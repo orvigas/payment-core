@@ -1,4 +1,4 @@
-package com.payment.entity;
+package com.payment.models;
 
 /**
  * Enumeration of payment statuses representing the lifecycle of a payment transaction.

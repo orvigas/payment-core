@@ -1,4 +1,4 @@
-package com.payment.exception;
+package com.payment.exceptions;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

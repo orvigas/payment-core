@@ -1,4 +1,4 @@
-package com.payment.exception;
+package com.payment.exceptions;
 
 /**
  * Exception thrown when a requested payment cannot be found.

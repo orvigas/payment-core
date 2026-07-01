@@ -1,4 +1,4 @@
-package com.payment.entity;
+package com.payment.models;
 
 import org.junit.jupiter.api.Test;
 

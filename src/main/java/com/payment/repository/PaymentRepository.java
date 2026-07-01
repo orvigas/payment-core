@@ -1,7 +1,7 @@
 package com.payment.repository;
 
-import com.payment.entity.Payment;
-import com.payment.entity.PaymentStatus;
+import com.payment.models.Payment;
+import com.payment.models.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;

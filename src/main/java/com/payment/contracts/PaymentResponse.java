@@ -1,6 +1,6 @@
 package com.payment.contracts;
 
-import com.payment.entity.PaymentStatus;
+import com.payment.models.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 

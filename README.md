@@ -212,10 +212,10 @@ src/main/java/com/payment/
 ├── contracts/
 │   ├── CreatePaymentRequest.java       # Request DTO (Java Record)
 │   └── PaymentResponse.java            # Response DTO (Java Record)
-├── entity/
+├── models/
 │   ├── Payment.java                    # JPA entity with @Entity annotation
 │   └── PaymentStatus.java              # Status enum
-├── exception/
+├── exceptions/
 │   ├── GlobalExceptionHandler.java     # @RestControllerAdvice for centralized error handling
 │   ├── PaymentNotFoundException.java    # Custom exception for missing payments
 │   └── InvalidPaymentException.java    # Custom exception for invalid operations
@@ -226,8 +226,8 @@ src/main/java/com/payment/
     └── PaymentValidator.java           # Validation rules
 
 src/main/resources/
-├── application.properties               # Default Spring configuration
-└── application-docker.properties        # Docker-specific overrides (DDL, logging)
+├── application.yml                      # Spring Boot configuration (YAML format)
+└── data.sql                             # Database seed: 1000 payment records auto-loaded on startup
 
 src/test/java/com/payment/              # 102 unit/integration tests (95% coverage)
 ├── PaymentServiceTest.java             # Unit tests for business logic
@@ -241,16 +241,29 @@ src/test/java/com/payment/              # 102 unit/integration tests (95% covera
 
 ### Database Setup
 
-- **Automatic DDL**: `spring.jpa.hibernate.ddl-auto=update` (applies schema changes automatically)
+- **Automatic DDL**: `spring.jpa.hibernate.ddl-auto=create-drop` (schema is dropped and recreated on every application startup)
+- **Seed Data**: `src/main/resources/data.sql` is automatically executed on startup, loading 1000 payment records for testing
 - **PostgreSQL Driver**: Included in dependencies for runtime
 - **Connection Pool**: HikariCP (default connection pool in Spring Boot)
-- **Database Initialization**: Automatic table creation via Hibernate DDL
+- **Database Initialization**: Automatic table creation via Hibernate DDL followed by seed data population
 
 ### Logging
 
 - **Framework**: SLF4J with Logback backend
 - **Log Levels**: Configured via `application.properties` and `application-docker.properties`
 - **Usage Pattern**: Leverage `@Slf4j` annotation from Lombok for structured logging
+
+## Package Structure Refactoring
+
+The project has been reorganized for improved maintainability:
+
+- **`com.payment.entity` → `com.payment.models`**: Data model classes (Payment, PaymentStatus) moved to `models` package
+- **`com.payment.exception` → `com.payment.exceptions`**: Exception handling classes moved to `exceptions` package
+  - `GlobalExceptionHandler.java`: Centralized exception handling
+  - `PaymentNotFoundException.java`: Custom exception for missing payments
+  - `InvalidPaymentException.java`: Custom exception for invalid operations
+
+All imports have been updated across main and test code. The package structure now better reflects the purpose of each component.
 
 ## Common Development Tasks
 
@@ -259,17 +272,18 @@ src/test/java/com/payment/              # 102 unit/integration tests (95% covera
 1. Create method in `PaymentService` with `@Transactional` annotation
 2. Add validation logic to `PaymentValidator` if needed
 3. Add corresponding endpoint to `PaymentController` with `@PostMapping` or `@GetMapping`
-4. Define custom exception in `com.payment.exception` if introducing new error scenarios
+4. Define custom exception in `com.payment.exceptions` if introducing new error scenarios
 5. Add exception handler in `GlobalExceptionHandler` for proper error response mapping
-6. Write integration tests using Testcontainers (see `PaymentIntegrationTest` as reference)
+6. Write integration tests using Testcontainers (see test files in `src/test/java/com/payment` as reference)
 
 ### Modifying Database Schema
 
-1. Update `Payment` entity in `src/main/java/com/payment/entity/Payment.java`
+1. Update `Payment` entity in `src/main/java/com/payment/models/Payment.java`
 2. Add corresponding property to `CreatePaymentRequest` and `PaymentResponse`
 3. Update `PaymentValidator` if validation rules change
-4. Hibernate will auto-migrate the schema with `ddl-auto=update`
-5. Update integration tests to verify the schema changes
+4. Database schema is recreated on startup with `ddl-auto=create-drop` (via `application.yml`)
+5. Update seed data in `src/main/resources/data.sql` if necessary
+6. Update integration tests to verify the schema changes
 
 ### Running Tests
 
