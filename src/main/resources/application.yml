@@ -67,6 +67,14 @@ springdoc:
     tags-sorter: alpha
     use-root-path: true
     urls-primary-name: payment-core
+    display-operation-id: false
+    enable-deep-linking: true
+    show-extensions: false
+    try-it-out-enabled: true
+    filter: false
+    layout: StandaloneLayout
+  show-actuator: false
+  use-fqn: true
 
 kafka:
   bootstrap-servers: kafka:9092 # Docker network
