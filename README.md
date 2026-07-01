@@ -8,6 +8,7 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 ## Features
 
 - RESTful API for payment operations (Create, Retrieve, Confirm, Refund)
+- Interactive API documentation with Swagger UI and OpenAPI 3.1 (springdoc-openapi)
 - Event-driven architecture with Apache Kafka for asynchronous payment processing
 - Immutable data contracts using Java Records
 - PostgreSQL database with strategic indexing for optimal query performance
@@ -58,6 +59,7 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 ### API & Validation
 
 - **REST Framework:** Spring Web MVC
+- **API Documentation:** springdoc-openapi 2.8.6 (Swagger UI, OpenAPI 3.1)
 - **Validation Framework:** Jakarta Bean Validation (Jakarta.validation)
 - **JSON Processing:** Jackson (included in Spring Boot)
 - **Logging:** SLF4J with Logback
@@ -92,8 +94,19 @@ mvn clean package
 docker-compose up -d
 
 # Check health
-curl http://localhost:8080/health
+curl http://localhost:8080/actuator/health
 ```
+
+### API Documentation (Swagger)
+
+With the application running:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI specification (JSON): `http://localhost:8080/v3/api-docs`
+
+All endpoints include descriptions, request/response schemas, and documented error codes.
+
+Note: springdoc-openapi 2.8.x is required for Spring Boot 3.5 (Spring Framework 6.2). Older 2.5.x/2.6.x versions fail at runtime when generating the OpenAPI document.
 
 ### API Endpoints
 
@@ -309,17 +322,6 @@ mvn clean test jacoco:report
 open target/site/jacoco/index.html
 ```
 
-```bash
-# Run all tests
-mvn test
-
-# Run with coverage report
-mvn clean test jacoco:report
-
-# View coverage report (opens in browser)
-open target/site/jacoco/index.html
-```
-
 ### Kafka Integration Testing
 
 ```bash
@@ -520,7 +522,8 @@ CLIENT (REST API)
 │  │ Port: 8080                          │   │
 │  │ Java 21, Spring Boot 3.5.0          │   │
 │  │ REST API: /api/v1/payments          │   │
-│  │ Health: /health, /info              │   │
+│  │ Docs: /swagger-ui.html              │   │
+│  │ Health: /actuator/health            │   │
 │  └─────────────────────────────────────┘   │
 │                                             │
 │  ┌─────────────────────────────────────┐   │
@@ -528,7 +531,7 @@ CLIENT (REST API)
 │  │ Image: postgres:15-alpine           │   │
 │  │ Port: 5432                          │   │
 │  │ Database: payment_db                │   │
-│  │ Seed: 1000 payment records          │   │
+│  │ Schema: recreated on startup        │   │
 │  └─────────────────────────────────────┘   │
 │                                             │
 │  ┌─────────────────────────────────────┐   │
@@ -676,7 +679,7 @@ src/test/java/com/payment/              # 135 unit/integration tests (93% covera
 ### Logging
 
 - **Framework**: SLF4J with Logback backend
-- **Log Levels**: Configured via `application.properties` and `application-docker.properties`
+- **Log Levels**: Configured via `application.yml` (root INFO, `com.payment` DEBUG)
 - **Usage Pattern**: Leverage `@Slf4j` annotation from Lombok for structured logging
 
 ## Package Structure Refactoring
@@ -741,10 +744,10 @@ docker build -t payment-core:latest .
 docker-compose up -d
 
 # Check application health
-curl http://localhost:8080/health
+curl http://localhost:8080/actuator/health
 
 # View application info
-curl http://localhost:8080/info
+curl http://localhost:8080/actuator/info
 
 # Stop services
 docker-compose down
@@ -752,9 +755,9 @@ docker-compose down
 
 ### Health & Monitoring
 
-- **Health Endpoint**: `GET http://localhost:8080/health` - Returns application health status
-- **Info Endpoint**: `GET http://localhost:8080/info` - Returns application metadata
-- **Metrics**: Available via Spring Boot Actuator (configure in `application.properties`)
+- **Health Endpoint**: `GET http://localhost:8080/actuator/health` - Returns application health status
+- **Info Endpoint**: `GET http://localhost:8080/actuator/info` - Returns application metadata
+- **Metrics**: Available via Spring Boot Actuator (exposure configured in `application.yml`)
 
 ## Notes for Future Development
 
