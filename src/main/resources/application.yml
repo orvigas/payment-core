@@ -55,3 +55,20 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+kafka:
+  bootstrap-servers: kafka:9092 # Docker network
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    acks: all
+    retries: 3
+    compression-type: snappy
+
+  consumer:
+    bootstrap-servers: kafka:9092
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    auto-offset-reset: earliest
+    max-poll-records: 100
+    group-id: payment-service
