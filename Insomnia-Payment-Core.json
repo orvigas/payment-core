@@ -1,278 +1,342 @@
 {
-  "version": 4,
-  "folders": [
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-07-01T12:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2024.1.0",
+  "resources": [
     {
-      "_id": "fld_payment_core",
+      "_id": "wrk_payment_core",
+      "_type": "workspace",
       "name": "Payment Core API",
-      "type": "request_group"
+      "description": "Testing suite for Payment Core REST API",
+      "scope": "design"
     },
-    {
-      "_id": "fld_health",
-      "name": "Health & System",
-      "type": "request_group",
-      "parentId": "fld_payment_core"
-    },
-    {
-      "_id": "fld_payments",
-      "name": "Payments",
-      "type": "request_group",
-      "parentId": "fld_payment_core"
-    },
-    {
-      "_id": "fld_create_payment",
-      "name": "Create Payment",
-      "type": "request_group",
-      "parentId": "fld_payments"
-    },
-    {
-      "_id": "fld_retrieve_payment",
-      "name": "Retrieve Payment",
-      "type": "request_group",
-      "parentId": "fld_payments"
-    },
-    {
-      "_id": "fld_payment_operations",
-      "name": "Payment Operations",
-      "type": "request_group",
-      "parentId": "fld_payments"
-    }
-  ],
-  "requests": [
-    {
-      "_id": "req_health_check",
-      "parentId": "fld_health",
-      "name": "Health Check",
-      "method": "GET",
-      "url": "{{ base_url }}/health",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 200', function() {\n  pm.response.to.have.status(200);\n});\n\npm.test('Response has status field', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('status');\n});"
-    },
-    {
-      "_id": "req_app_info",
-      "parentId": "fld_health",
-      "name": "Application Info",
-      "method": "GET",
-      "url": "{{ base_url }}/info",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 200', function() {\n  pm.response.to.have.status(200);\n});"
-    },
-    {
-      "_id": "req_create_payment_success",
-      "parentId": "fld_create_payment",
-      "name": "Create Payment - Success",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"userId\": \"user_123\",\n  \"amount\": 5000.00,\n  \"currency\": \"MXN\",\n  \"merchant\": \"jersey-mikes\",\n  \"description\": \"Test Payment from Insomnia\"\n}"
-      },
-      "tests": "pm.test('Status code is 201', function() {\n  pm.response.to.have.status(201);\n});\n\npm.test('Response has paymentId', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('paymentId');\n  pm.environment.set('payment_id', jsonData.paymentId);\n});\n\npm.test('Payment status is PENDING', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData.status).to.equal('PENDING');\n});\n\npm.test('Amount matches', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData.amount).to.equal(5000);\n});\n\npm.test('Response time is acceptable', function() {\n  pm.expect(pm.response.responseTime).to.be.below(2000);\n});"
-    },
-    {
-      "_id": "req_create_payment_usd",
-      "parentId": "fld_create_payment",
-      "name": "Create Payment - USD Currency",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"userId\": \"user_456\",\n  \"amount\": 2500.50,\n  \"currency\": \"USD\",\n  \"merchant\": \"starbucks\",\n  \"description\": \"USD Payment Test\"\n}"
-      },
-      "tests": "pm.test('Status code is 201', function() {\n  pm.response.to.have.status(201);\n});\n\npm.test('Currency is USD', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData.currency).to.equal('USD');\n});"
-    },
-    {
-      "_id": "req_create_payment_invalid",
-      "parentId": "fld_create_payment",
-      "name": "Create Payment - Invalid (Negative Amount)",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"userId\": \"user_invalid\",\n  \"amount\": -100.00,\n  \"currency\": \"MXN\",\n  \"merchant\": \"invalid-merchant\",\n  \"description\": \"Invalid payment\"\n}"
-      },
-      "tests": "pm.test('Status code is 400 (Bad Request)', function() {\n  pm.response.to.have.status(400);\n});\n\npm.test('Error response contains error field', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('error');\n});"
-    },
-    {
-      "_id": "req_get_payment_success",
-      "parentId": "fld_retrieve_payment",
-      "name": "Get Payment - Success",
-      "method": "GET",
-      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 200', function() {\n  pm.response.to.have.status(200);\n});\n\npm.test('Response has payment details', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('paymentId');\n  pm.expect(jsonData).to.have.property('userId');\n  pm.expect(jsonData).to.have.property('amount');\n  pm.expect(jsonData).to.have.property('status');\n});\n\npm.test('Payment ID matches', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData.paymentId).to.equal(pm.environment.get('payment_id'));\n});"
-    },
-    {
-      "_id": "req_get_payment_not_found",
-      "parentId": "fld_retrieve_payment",
-      "name": "Get Payment - Not Found",
-      "method": "GET",
-      "url": "{{ base_url }}/api/v1/payments/invalid-id-12345",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 404', function() {\n  pm.response.to.have.status(404);\n});\n\npm.test('Error response received', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('error');\n});"
-    },
-    {
-      "_id": "req_confirm_payment_success",
-      "parentId": "fld_payment_operations",
-      "name": "Confirm Payment - Success",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}/confirm",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 200', function() {\n  pm.response.to.have.status(200);\n});\n\npm.test('Response has confirmation', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('paymentId');\n});\n\npm.test('Response time is acceptable', function() {\n  pm.expect(pm.response.responseTime).to.be.below(2000);\n});"
-    },
-    {
-      "_id": "req_confirm_payment_not_found",
-      "parentId": "fld_payment_operations",
-      "name": "Confirm Payment - Not Found",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments/invalid-payment-id/confirm",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 404', function() {\n  pm.response.to.have.status(404);\n});"
-    },
-    {
-      "_id": "req_refund_payment_success",
-      "parentId": "fld_payment_operations",
-      "name": "Refund Payment - Success",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}/refund",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 200', function() {\n  pm.response.to.have.status(200);\n});\n\npm.test('Refund response has details', function() {\n  var jsonData = pm.response.json();\n  pm.expect(jsonData).to.have.property('paymentId');\n});"
-    },
-    {
-      "_id": "req_refund_payment_not_found",
-      "parentId": "fld_payment_operations",
-      "name": "Refund Payment - Not Found",
-      "method": "POST",
-      "url": "{{ base_url }}/api/v1/payments/invalid-payment-id/refund",
-      "headers": [
-        {
-          "name": "Content-Type",
-          "value": "application/json"
-        }
-      ],
-      "tests": "pm.test('Status code is 404', function() {\n  pm.response.to.have.status(404);\n});"
-    }
-  ],
-  "environments": [
     {
       "_id": "env_local",
+      "_type": "environment",
+      "parentId": "wrk_payment_core",
       "name": "Local Development",
-      "values": [
-        {
-          "key": "base_url",
-          "value": "http://localhost:8080",
-          "enabled": true
-        },
-        {
-          "key": "payment_id",
-          "value": "550e8400-e29b-41d4-a716-446655440001",
-          "enabled": true
-        }
-      ]
+      "data": {
+        "base_url": "http://localhost:8080",
+        "payment_id": ""
+      },
+      "dataPropertyOrder": {
+        "base_url": {},
+        "payment_id": {}
+      }
     },
     {
       "_id": "env_docker",
+      "_type": "environment",
+      "parentId": "wrk_payment_core",
       "name": "Docker Compose",
-      "values": [
-        {
-          "key": "base_url",
-          "value": "http://localhost:8080",
-          "enabled": true
-        },
-        {
-          "key": "payment_id",
-          "value": "550e8400-e29b-41d4-a716-446655440001",
-          "enabled": true
-        }
-      ]
+      "data": {
+        "base_url": "http://localhost:8080",
+        "payment_id": ""
+      },
+      "dataPropertyOrder": {
+        "base_url": {},
+        "payment_id": {}
+      }
     },
     {
       "_id": "env_staging",
+      "_type": "environment",
+      "parentId": "wrk_payment_core",
       "name": "Staging",
-      "values": [
-        {
-          "key": "base_url",
-          "value": "https://staging.payment-core.example.com",
-          "enabled": true
-        },
-        {
-          "key": "payment_id",
-          "value": "550e8400-e29b-41d4-a716-446655440001",
-          "enabled": true
-        }
-      ]
+      "data": {
+        "base_url": "https://staging.payment-core.example.com",
+        "payment_id": ""
+      },
+      "dataPropertyOrder": {
+        "base_url": {},
+        "payment_id": {}
+      }
     },
     {
       "_id": "env_production",
+      "_type": "environment",
+      "parentId": "wrk_payment_core",
       "name": "Production",
-      "values": [
+      "data": {
+        "base_url": "https://api.payment-core.example.com",
+        "payment_id": ""
+      },
+      "dataPropertyOrder": {
+        "base_url": {},
+        "payment_id": {}
+      }
+    },
+    {
+      "_id": "fld_root",
+      "_type": "request_group",
+      "parentId": "wrk_payment_core",
+      "name": "Payment Core API",
+      "environment": {}
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "fld_root",
+      "name": "Health & System",
+      "environment": {}
+    },
+    {
+      "_id": "fld_payments",
+      "_type": "request_group",
+      "parentId": "fld_root",
+      "name": "Payments",
+      "environment": {}
+    },
+    {
+      "_id": "fld_create",
+      "_type": "request_group",
+      "parentId": "fld_payments",
+      "name": "Create Payment",
+      "environment": {}
+    },
+    {
+      "_id": "fld_retrieve",
+      "_type": "request_group",
+      "parentId": "fld_payments",
+      "name": "Retrieve Payment",
+      "environment": {}
+    },
+    {
+      "_id": "fld_operations",
+      "_type": "request_group",
+      "parentId": "fld_payments",
+      "name": "Payment Operations",
+      "environment": {}
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health Check",
+      "url": "{{ base_url }}/health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
         {
-          "key": "base_url",
-          "value": "https://api.payment-core.example.com",
-          "enabled": true
-        },
-        {
-          "key": "payment_id",
-          "value": "",
-          "enabled": true
+          "name": "Content-Type",
+          "value": "application/json"
         }
-      ]
+      ],
+      "authentication": {},
+      "metaSortKey": 1,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_info",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Application Info",
+      "url": "{{ base_url }}/info",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 2,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_create_success",
+      "_type": "request",
+      "parentId": "fld_create",
+      "name": "Create Payment - Success",
+      "url": "{{ base_url }}/api/v1/payments",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"userId\":\"user_123\",\"amount\":5000.00,\"currency\":\"MXN\",\"merchant\":\"jersey-mikes\",\"description\":\"Test Payment from Insomnia\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 3,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_create_usd",
+      "_type": "request",
+      "parentId": "fld_create",
+      "name": "Create Payment - USD Currency",
+      "url": "{{ base_url }}/api/v1/payments",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"userId\":\"user_456\",\"amount\":2500.50,\"currency\":\"USD\",\"merchant\":\"starbucks\",\"description\":\"USD Payment Test\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 4,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_create_invalid",
+      "_type": "request",
+      "parentId": "fld_create",
+      "name": "Create Payment - Invalid (Negative Amount)",
+      "url": "{{ base_url }}/api/v1/payments",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"userId\":\"user_invalid\",\"amount\":-100.00,\"currency\":\"MXN\",\"merchant\":\"invalid-merchant\",\"description\":\"Invalid payment\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 5,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_success",
+      "_type": "request",
+      "parentId": "fld_retrieve",
+      "name": "Get Payment - Success",
+      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 6,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_notfound",
+      "_type": "request",
+      "parentId": "fld_retrieve",
+      "name": "Get Payment - Not Found",
+      "url": "{{ base_url }}/api/v1/payments/invalid-id-12345",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 7,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_confirm_success",
+      "_type": "request",
+      "parentId": "fld_operations",
+      "name": "Confirm Payment - Success",
+      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}/confirm",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 8,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_confirm_notfound",
+      "_type": "request",
+      "parentId": "fld_operations",
+      "name": "Confirm Payment - Not Found",
+      "url": "{{ base_url }}/api/v1/payments/invalid-payment-id/confirm",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 9,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_refund_success",
+      "_type": "request",
+      "parentId": "fld_operations",
+      "name": "Refund Payment - Success",
+      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}/refund",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 10,
+      "isPrivate": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_refund_notfound",
+      "_type": "request",
+      "parentId": "fld_operations",
+      "name": "Refund Payment - Not Found",
+      "url": "{{ base_url }}/api/v1/payments/invalid-payment-id/refund",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 11,
+      "isPrivate": false,
+      "_type": "request"
     }
-  ],
-  "metadata": {
-    "app_version": "1.0.0",
-    "export_date": "2026-07-01T12:00:00.000Z"
-  }
+  ]
 }
