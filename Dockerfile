@@ -15,6 +15,6 @@ COPY --from=builder /app/target/payment-core-1.0.0.jar app.jar
 EXPOSE 8080 5005
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD java -cp app.jar org.springframework.boot.loader.JarLauncher
+  CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "app.jar"]
