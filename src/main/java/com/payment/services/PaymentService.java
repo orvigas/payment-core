@@ -5,6 +5,8 @@ import com.payment.contracts.PaymentResponse;
 import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import com.payment.errors.PaymentNotFoundException;
+import com.payment.events.PaymentInitiatedEvent;
+import com.payment.kafka.PaymentProducer;
 import com.payment.errors.InvalidPaymentException;
 import com.payment.repositories.PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +18,11 @@ import java.time.LocalDateTime;
 /**
  * Service layer for payment operations.
  *
- * <p>Orchestrates business logic for payment processing, including creation, retrieval,
- * confirmation, and refunding. All operations are transactional to ensure data consistency.
+ * <p>
+ * Orchestrates business logic for payment processing, including creation,
+ * retrieval,
+ * confirmation, and refunding. All operations are transactional to ensure data
+ * consistency.
  *
  * @author Orlando Villegas (orvigas@gmail.com)
  * @version 1.0.0
@@ -29,11 +34,14 @@ public class PaymentService {
 
   private final PaymentRepository paymentRepository;
   private final PaymentValidator paymentValidator;
+  private final PaymentProducer paymentProducer;
 
   /**
    * Creates a new payment transaction.
    *
-   * <p>Validates the request, creates a new Payment entity with PENDING status, persists it to
+   * <p>
+   * Validates the request, creates a new Payment entity with PENDING status,
+   * persists it to
    * the database, and returns the response.
    *
    * @param request the payment creation request
@@ -44,8 +52,10 @@ public class PaymentService {
   public PaymentResponse createPayment(CreatePaymentRequest request) {
     log.info("Creating payment for user: {}, amount: {}", request.userId(), request.amount());
 
+    // Validar request
     paymentValidator.validateCreatePaymentRequest(request);
 
+    // Crear entidad
     Payment payment = new Payment();
     payment.setUserId(request.userId());
     payment.setAmount(request.amount());
@@ -54,9 +64,25 @@ public class PaymentService {
     payment.setDescription(request.description());
     payment.setStatus(PaymentStatus.PENDING);
 
+    // Guardar
     Payment saved = paymentRepository.save(payment);
     log.info("Payment created: {}", saved.getPaymentId());
 
+    // Publish event to Kafka
+    PaymentInitiatedEvent event = PaymentInitiatedEvent.builder()
+        .paymentId(saved.getPaymentId())
+        .userId(saved.getUserId())
+        .amount(saved.getAmount())
+        .currency(saved.getCurrency())
+        .merchant(saved.getMerchant())
+        .description(saved.getDescription())
+        .createdAt(saved.getCreatedAt())
+        .build();
+
+    paymentProducer.publishPaymentInitiated(event);
+    log.debug("PaymentInitiatedEvent published for payment: {}", saved.getPaymentId());
+
+    // Convertir a response
     return mapToResponse(saved);
   }
 
@@ -80,13 +106,15 @@ public class PaymentService {
   /**
    * Confirms a pending payment.
    *
-   * <p>Transitions the payment status from PENDING → PROCESSING → COMPLETED and sets the
+   * <p>
+   * Transitions the payment status from PENDING → PROCESSING → COMPLETED and sets
+   * the
    * completion timestamp.
    *
    * @param paymentId the payment ID
    * @return the confirmed payment response
    * @throws PaymentNotFoundException if the payment does not exist
-   * @throws InvalidPaymentException if the payment is not in PENDING status
+   * @throws InvalidPaymentException  if the payment is not in PENDING status
    */
   @Transactional
   public PaymentResponse confirmPayment(String paymentId) {
@@ -115,12 +143,13 @@ public class PaymentService {
   /**
    * Refunds a completed payment.
    *
-   * <p>Transitions the payment status from COMPLETED to REFUNDED.
+   * <p>
+   * Transitions the payment status from COMPLETED to REFUNDED.
    *
    * @param paymentId the payment ID
    * @return the refunded payment response
    * @throws PaymentNotFoundException if the payment does not exist
-   * @throws InvalidPaymentException if the payment is not in COMPLETED status
+   * @throws InvalidPaymentException  if the payment is not in COMPLETED status
    */
   @Transactional
   public PaymentResponse refundPayment(String paymentId) {
