@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
  * transaction. It includes comprehensive audit trails with automatic timestamp management and
  * database indexes for optimal query performance.
  *
- * <p>A payment transitions through the following statuses: PENDING → CONFIRMED → REFUNDED
- * (optional).
+ * <p>A payment transitions through the following statuses: PENDING → PROCESSING → COMPLETED,
+ * with optional REFUNDED or FAILED states for terminal conditions.
  *
  * @author Orlando Villegas (orvigas@gmail.com)
  * @version 1.0.0
@@ -53,7 +53,7 @@ public class Payment {
     @Column(name = "merchant", nullable = false)
     private String merchant;
 
-    /** Current status of the payment (PENDING, CONFIRMED, REFUNDED). */
+    /** Current status of the payment (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED). */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PaymentStatus status;

@@ -161,7 +161,7 @@ The project follows a classic layered architecture pattern:
 
 5. **Data Model** (`com.payment.models`): JPA entities
    - `Payment`: Main entity with UUID for paymentId, strategic indexing for performance
-   - `PaymentStatus`: Enum for payment lifecycle states (PENDING → CONFIRMED → REFUNDED)
+   - `PaymentStatus`: Enum for payment lifecycle states (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
 
 6. **API Contracts** (`com.payment.contracts`): Request/response DTOs
    - `CreatePaymentRequest`: Immutable request contract with validation (Java Record)
@@ -183,14 +183,14 @@ The project follows a classic layered architecture pattern:
 #### Payment Entity
 
 ```
-Payment (Table: payment)
+Payment (Table: payments)
 ├── paymentId (String, UUID, Primary Key, indexed)
 ├── userId (String, indexed for user lookups)
 ├── amount (BigDecimal)
 ├── currency (String)
 ├── merchant (String)
 ├── description (String)
-├── status (PaymentStatus enum: PENDING → CONFIRMED → REFUNDED)
+├── status (PaymentStatus enum: PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
 ├── createdAt (LocalDateTime, auto-populated)
 └── updatedAt (LocalDateTime, auto-updated)
 ```
@@ -198,8 +198,10 @@ Payment (Table: payment)
 #### Payment Lifecycle
 
 1. **PENDING**: Initial state after payment creation
-2. **CONFIRMED**: Payment has been confirmed/authorized
-3. **REFUNDED**: Payment has been refunded (terminal state)
+2. **PROCESSING**: Payment is being processed
+3. **COMPLETED**: Payment has been successfully completed
+4. **FAILED**: Payment processing failed (terminal state)
+5. **REFUNDED**: Payment has been refunded (terminal state)
 
 ### Directory Structure
 
