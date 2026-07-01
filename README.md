@@ -130,7 +130,184 @@ POST /api/v1/payments/{paymentId}/confirm
 POST /api/v1/payments/{paymentId}/refund
 ```
 
+## Endpoint Flow Walkthrough
+
+This section explains what happens when each endpoint receives a request, from the client all the way through the system and back.
+
+### 1. Create Payment: POST /api/v1/payments
+
+**Request:**
+```json
+{
+  "userId": "user123",
+  "amount": 5000.00,
+  "currency": "MXN",
+  "merchant": "jersey-mikes",
+  "description": "Order #123"
+}
+```
+
+**Step-by-Step Flow:**
+
+1. **Client sends HTTP POST request** → REST endpoint receives the request with JSON payload
+2. **PaymentController.createPayment()** → Spring deserializes JSON into CreatePaymentRequest record
+3. **Request Validation** → Jakarta Bean Validation annotations are checked automatically
+4. **PaymentValidator.validateCreatePaymentRequest()** → Custom business rule validation runs (user ID format, positive amount, valid currency)
+5. **Payment entity created** → New Payment object instantiated with PENDING status, UUID generated for paymentId
+6. **PaymentRepository.save()** → Entity persisted to PostgreSQL database (INSERT query)
+7. **PaymentProducer.publishPaymentInitiated()** → PaymentInitiatedEvent created and published to Kafka topic `payment-initiated`
+8. **Kafka Consumers receive event**:
+   - ChargingConsumer: Processes payment charging logic asynchronously
+   - NotificationConsumer: Prepares notification messages
+   - AnalyticsConsumer: Records analytics data
+9. **PaymentResponse created** → Payment entity mapped to response DTO (Record)
+10. **HTTP 201 Created response** → Client receives payment details with new paymentId
+
+**Expected Result:**
+- Status: 201 Created
+- Response body contains: paymentId, userId, amount, currency, merchant, status (PENDING), timestamps
+- Database: New row inserted in payments table
+- Kafka: Event published to 3 topics via producers
+
+---
+
+### 2. Get Payment: GET /api/v1/payments/{paymentId}
+
+**Request:**
+```
+GET /api/v1/payments/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Step-by-Step Flow:**
+
+1. **Client sends HTTP GET request** → Spring extracts paymentId from URL path
+2. **PaymentController.getPayment()** → Path variable captured and passed to service layer
+3. **PaymentService.getPayment()** → Service method marked as read-only transactional
+4. **PaymentRepository.findByPaymentId()** → JPA query executed against PostgreSQL (SELECT query using paymentId index)
+5. **Database lookup** → PostgreSQL uses index on paymentId column for fast lookup
+6. **Entity found or not found**:
+   - Found: Payment object returned from query
+   - Not found: PaymentNotFoundException thrown
+7. **Exception handling (if not found)** → GlobalExceptionHandler catches exception and creates error response
+8. **PaymentResponse mapping** → Payment entity converted to response DTO
+9. **HTTP 200 OK response** → Client receives current payment details
+
+**Expected Result:**
+- Status: 200 OK
+- Response body contains: current payment state (all fields including status, amount, merchant, timestamps)
+- Database: Single indexed SELECT query (fast)
+- If not found: Status 404 Not Found with error message
+
+---
+
+### 3. Confirm Payment: POST /api/v1/payments/{paymentId}/confirm
+
+**Request:**
+```
+POST /api/v1/payments/550e8400-e29b-41d4-a716-446655440000/confirm
+```
+
+**Step-by-Step Flow:**
+
+1. **Client sends HTTP POST request** → Spring extracts paymentId from URL path
+2. **PaymentController.confirmPayment()** → Path variable passed to service layer
+3. **PaymentService.confirmPayment()** → Service method marked as transactional (atomic operation)
+4. **PaymentRepository.findByPaymentId()** → Look up payment by ID
+5. **Status validation** → Service checks payment status is PENDING (required for confirmation)
+   - If not PENDING: InvalidPaymentException thrown
+6. **Status transition: PENDING → PROCESSING** → Service updates status field
+7. **PaymentRepository.save()** → First save to database with PROCESSING status (UPDATE query)
+8. **Status transition: PROCESSING → COMPLETED** → Service updates status field
+9. **Timestamp update** → CompletedAt field set to current timestamp
+10. **PaymentRepository.save()** → Second save to database with COMPLETED status (UPDATE query)
+11. **Transaction committed** → Both updates committed atomically to PostgreSQL
+12. **PaymentResponse mapping** → Updated Payment entity converted to response DTO
+13. **HTTP 200 OK response** → Client receives updated payment with COMPLETED status
+
+**Expected Result:**
+- Status: 200 OK
+- Response body contains: payment with status = COMPLETED, completedAt timestamp populated
+- Database: Two atomic UPDATE queries; payment.status changed from PENDING to PROCESSING to COMPLETED
+- If payment not PENDING: Status 400 Bad Request with "Only PENDING payments can be confirmed"
+- Transaction ensures atomicity: both updates succeed or both fail
+
+---
+
+### 4. Refund Payment: POST /api/v1/payments/{paymentId}/refund
+
+**Request:**
+```
+POST /api/v1/payments/550e8400-e29b-41d4-a716-446655440000/refund
+```
+
+**Step-by-Step Flow:**
+
+1. **Client sends HTTP POST request** → Spring extracts paymentId from URL path
+2. **PaymentController.refundPayment()** → Path variable passed to service layer
+3. **PaymentService.refundPayment()** → Service method marked as transactional
+4. **PaymentRepository.findByPaymentId()** → Look up payment by ID
+5. **Status validation** → Service checks payment status is COMPLETED (required for refund)
+   - If not COMPLETED: InvalidPaymentException thrown
+6. **Status transition: COMPLETED → REFUNDED** → Service updates status field
+7. **PaymentRepository.save()** → Save to database with REFUNDED status (UPDATE query)
+8. **Transaction committed** → Update committed to PostgreSQL
+9. **PaymentResponse mapping** → Updated Payment entity converted to response DTO
+10. **HTTP 200 OK response** → Client receives updated payment with REFUNDED status
+
+**Expected Result:**
+- Status: 200 OK
+- Response body contains: payment with status = REFUNDED
+- Database: Single atomic UPDATE query; payment.status changed from COMPLETED to REFUNDED
+- If payment not COMPLETED: Status 400 Bad Request with "Only COMPLETED payments can be refunded"
+- Terminal state: REFUNDED status cannot be changed further
+
+---
+
+## Error Handling Across All Endpoints
+
+**GlobalExceptionHandler** catches all exceptions and returns structured responses:
+
+```json
+{
+  "timestamp": "2026-07-01T12:34:56.789Z",
+  "status": 400,
+  "error": "InvalidPaymentException",
+  "message": "Only PENDING payments can be confirmed"
+}
+```
+
+**Common Error Scenarios:**
+
+1. **Validation Errors** (400)
+   - Missing required fields
+   - Negative amount
+   - Empty userId or merchant
+
+2. **Not Found Errors** (404)
+   - paymentId does not exist in database
+
+3. **Business Rule Violations** (400)
+   - Trying to confirm non-PENDING payment
+   - Trying to refund non-COMPLETED payment
+
+4. **System Errors** (500)
+   - Database connection failures
+   - Kafka producer failures (logged but request completes)
+
+---
+
 ## Testing
+
+```bash
+# Run all tests
+mvn test
+
+# Run with coverage report
+mvn clean test jacoco:report
+
+# View coverage report (opens in browser)
+open target/site/jacoco/index.html
+```
 
 ```bash
 # Run all tests
@@ -453,8 +630,7 @@ src/main/java/com/payment/
     └── PaymentValidator.java           # Validation rules
 
 src/main/resources/
-├── application.yml                      # Spring Boot configuration (YAML format)
-└── data.sql                             # Database seed: 1000 payment records auto-loaded on startup
+└── application.yml                      # Spring Boot configuration (YAML format)
 
 src/test/java/com/payment/              # 135 unit/integration tests (93% coverage)
 ├── PaymentServiceTest.java             # Unit tests for business logic
@@ -478,10 +654,8 @@ src/test/java/com/payment/              # 135 unit/integration tests (93% covera
 ### Database Setup
 
 - **Automatic DDL**: `spring.jpa.hibernate.ddl-auto=create-drop` (schema is dropped and recreated on every application startup)
-- **Seed Data**: `src/main/resources/data.sql` is automatically executed on startup, loading 1000 payment records for testing
 - **PostgreSQL Driver**: Included in dependencies for runtime
 - **Connection Pool**: HikariCP (default connection pool in Spring Boot)
-- **Database Initialization**: Automatic table creation via Hibernate DDL followed by seed data population
 
 ### Kafka Configuration
 
@@ -534,8 +708,7 @@ All imports have been updated across main and test code. The package structure n
 2. Add corresponding property to `CreatePaymentRequest` and `PaymentResponse`
 3. Update `PaymentValidator` if validation rules change
 4. Database schema is recreated on startup with `ddl-auto=create-drop` (via `application.yml`)
-5. Update seed data in `src/main/resources/data.sql` if necessary
-6. Update integration tests to verify the schema changes
+5. Update integration tests to verify the schema changes
 
 ### Running Tests
 
