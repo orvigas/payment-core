@@ -164,7 +164,7 @@ mvn test -Dtest=KafkaIntegrationTest -X 2>&1 | grep -i kafka
 
 ### Code Coverage
 
-- **Current:** 95% code coverage with comprehensive unit and integration test suite (105 tests)
+- **Current:** 93% code coverage with comprehensive unit and integration test suite (135 tests)
 - **Coverage Report:** Run `mvn clean test jacoco:report` to generate detailed coverage report at `target/site/jacoco/index.html`
 
 ## Architecture
@@ -281,12 +281,21 @@ src/main/resources/
 ├── application.yml                      # Spring Boot configuration (YAML format)
 └── data.sql                             # Database seed: 1000 payment records auto-loaded on startup
 
-src/test/java/com/payment/              # 105 unit/integration tests (95% coverage)
+src/test/java/com/payment/              # 135 unit/integration tests (93% coverage)
 ├── PaymentServiceTest.java             # Unit tests for business logic
 ├── PaymentControllerTest.java          # Integration tests for REST endpoints
 ├── PaymentValidatorTest.java           # Validation logic tests
 ├── PaymentRepositoryTest.java          # Repository layer tests
-└── PaymentIntegrationTest.java         # Full-stack integration tests with Testcontainers
+├── PaymentIntegrationTest.java         # Full-stack integration tests with Testcontainers
+├── kafka/
+│   ├── ChargingConsumerTest.java       # Charging consumer unit tests
+│   ├── NotificationConsumerTest.java   # Notification consumer unit tests
+│   ├── AnalyticsConsumerTest.java      # Analytics consumer unit tests
+│   ├── KafkaIntegrationTest.java       # Kafka integration tests
+│   ├── KafkaConsumersIntegrationTest.java # Consumer flow integration tests
+│   └── KafkaEndToEndTest.java          # End-to-end tests with Spring Boot context
+└── events/
+    └── PaymentEventTest.java           # Event class validation tests
 ```
 
 ## Configuration
