@@ -35,7 +35,7 @@ server:
 management:
   endpoints:
     web:
-      base-path: /
+      base-path: /actuator
       exposure:
         include: health,info
   endpoint:
@@ -66,6 +66,7 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
     use-root-path: true
+    urls-primary-name: payment-core
 
 kafka:
   bootstrap-servers: kafka:9092 # Docker network
