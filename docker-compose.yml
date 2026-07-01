@@ -74,6 +74,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8080:8080"
+      - "5005:5005"
     depends_on:
       postgres:
         condition: service_healthy

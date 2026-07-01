@@ -1,28 +1,31 @@
 package com.payment.kafka;
 
-import com.payment.kafka.KafkaTopics;
-import com.payment.models.Payment;
-import com.payment.models.PaymentStatus;
-import com.payment.events.PaymentChargedEvent;
-import com.payment.events.PaymentInitiatedEvent;
-import com.payment.repositories.PaymentRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.payment.events.PaymentChargedEvent;
+import com.payment.events.PaymentInitiatedEvent;
+import com.payment.models.Payment;
+import com.payment.models.PaymentStatus;
+import com.payment.repositories.PaymentRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Consumer for processing payment charging events.
  *
- * <p>Subscribes to {@link com.payment.kafka.KafkaTopics#PAYMENT_INITIATED} events and orchestrates
- * the payment charging process. Updates payment status to PROCESSING, simulates the charge operation,
+ * <p>
+ * Subscribes to {@link com.payment.kafka.KafkaTopics#PAYMENT_INITIATED} events
+ * and orchestrates
+ * the payment charging process. Updates payment status to PROCESSING, simulates
+ * the charge operation,
  * and publishes the result to the payment-charged topic.
  *
  * @author orvigas@gmail.com
@@ -38,13 +41,17 @@ public class ChargingConsumer {
   /**
    * Consumes payment initiated events and processes the charge.
    *
-   * <p>Retrieves the payment from the database, updates status to PROCESSING, simulates
-   * the charge operation (90% success rate), and updates the final status to COMPLETED
+   * <p>
+   * Retrieves the payment from the database, updates status to PROCESSING,
+   * simulates
+   * the charge operation (90% success rate), and updates the final status to
+   * COMPLETED
    * or FAILED. Publishes a payment charged event with the result.
    *
-   * @param event the payment initiation event containing payment details
+   * @param event         the payment initiation event containing payment details
    * @param correlationId optional correlation ID for request tracing
-   * @throws RuntimeException if payment is not found or an error occurs during processing
+   * @throws RuntimeException if payment is not found or an error occurs during
+   *                          processing
    */
   @KafkaListener(topics = KafkaTopics.PAYMENT_INITIATED, groupId = KafkaTopics.CHARGING_GROUP, containerFactory = "kafkaListenerContainerFactory")
   @Transactional
@@ -96,7 +103,8 @@ public class ChargingConsumer {
   /**
    * Simulates the payment charge operation.
    *
-   * <p>In a production system, this would call an external payment processor
+   * <p>
+   * In a production system, this would call an external payment processor
    * (e.g., Stripe, Adyen). Currently returns success with 90% probability.
    *
    * @param event the payment initiation event

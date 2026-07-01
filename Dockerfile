@@ -12,9 +12,9 @@ FROM amazoncorretto:23-alpine
 WORKDIR /app
 COPY --from=builder /app/target/payment-core-1.0.0.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8080 5005
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD java -cp app.jar org.springframework.boot.loader.JarLauncher
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "app.jar"]
