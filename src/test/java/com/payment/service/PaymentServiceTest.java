@@ -1,6 +1,6 @@
 package com.payment.service;
 
-import com.payment.dto.CreatePaymentRequest;
+import com.payment.contracts.CreatePaymentRequest;
 import com.payment.entity.Payment;
 import com.payment.entity.PaymentStatus;
 import com.payment.exception.InvalidPaymentException;
@@ -34,11 +34,13 @@ public class PaymentServiceTest {
 
   @BeforeEach
   void setUp() {
-    validRequest = new CreatePaymentRequest();
-    validRequest.setUserId("user123");
-    validRequest.setAmount(new BigDecimal("5000.00"));
-    validRequest.setCurrency("MXN");
-    validRequest.setMerchant("jersey-mikes");
+    validRequest = new CreatePaymentRequest(
+        "user123",
+        new BigDecimal("5000.00"),
+        "MXN",
+        "jersey-mikes",
+        null
+    );
   }
 
   @Test
@@ -55,8 +57,8 @@ public class PaymentServiceTest {
 
     // Assert
     assertNotNull(response);
-    assertEquals("pay_123", response.getPaymentId());
-    assertEquals(PaymentStatus.PENDING, response.getStatus());
+    assertEquals("pay_123", response.paymentId());
+    assertEquals(PaymentStatus.PENDING, response.status());
     verify(paymentRepository, times(1)).save(any());
   }
 
@@ -86,7 +88,7 @@ public class PaymentServiceTest {
 
     // Assert
     assertNotNull(response);
-    assertEquals("pay_123", response.getPaymentId());
+    assertEquals("pay_123", response.paymentId());
     verify(paymentRepository, times(2)).save(any());
   }
 }
