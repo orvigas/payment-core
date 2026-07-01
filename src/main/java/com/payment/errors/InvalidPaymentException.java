@@ -1,4 +1,4 @@
-package com.payment.exceptions;
+package com.payment.errors;
 
 /**
  * Exception thrown when a payment request or operation is invalid.

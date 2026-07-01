@@ -155,11 +155,11 @@ The project follows a classic layered architecture pattern:
 3. **Data Access Layer** (`com.payment.repository`): Database interactions
    - `PaymentRepository`: Spring Data JPA interface for Payment entity with optimized queries
 
-4. **Exception Handling** (`com.payment.exception`): Centralized error responses
+4. **Exception Handling** (`com.payment.errors`): Centralized error responses
    - `GlobalExceptionHandler`: Maps exceptions to structured HTTP error responses
    - Custom exceptions: `PaymentNotFoundException`, `InvalidPaymentException`
 
-5. **Data Model** (`com.payment.entity`): JPA entities
+5. **Data Model** (`com.payment.models`): JPA entities
    - `Payment`: Main entity with UUID for paymentId, strategic indexing for performance
    - `PaymentStatus`: Enum for payment lifecycle states (PENDING → CONFIRMED → REFUNDED)
 
@@ -215,7 +215,7 @@ src/main/java/com/payment/
 ├── models/
 │   ├── Payment.java                    # JPA entity with @Entity annotation
 │   └── PaymentStatus.java              # Status enum
-├── exceptions/
+├── errors/
 │   ├── GlobalExceptionHandler.java     # @RestControllerAdvice for centralized error handling
 │   ├── PaymentNotFoundException.java    # Custom exception for missing payments
 │   └── InvalidPaymentException.java    # Custom exception for invalid operations
@@ -258,7 +258,7 @@ src/test/java/com/payment/              # 102 unit/integration tests (95% covera
 The project has been reorganized for improved maintainability:
 
 - **`com.payment.entity` → `com.payment.models`**: Data model classes (Payment, PaymentStatus) moved to `models` package
-- **`com.payment.exception` → `com.payment.exceptions`**: Exception handling classes moved to `exceptions` package
+- **`com.payment.exceptions` → `com.payment.errors`**: Exception handling classes moved to `errors` package
   - `GlobalExceptionHandler.java`: Centralized exception handling
   - `PaymentNotFoundException.java`: Custom exception for missing payments
   - `InvalidPaymentException.java`: Custom exception for invalid operations
@@ -272,7 +272,7 @@ All imports have been updated across main and test code. The package structure n
 1. Create method in `PaymentService` with `@Transactional` annotation
 2. Add validation logic to `PaymentValidator` if needed
 3. Add corresponding endpoint to `PaymentController` with `@PostMapping` or `@GetMapping`
-4. Define custom exception in `com.payment.exceptions` if introducing new error scenarios
+4. Define custom exception in `com.payment.errors` if introducing new error scenarios
 5. Add exception handler in `GlobalExceptionHandler` for proper error response mapping
 6. Write integration tests using Testcontainers (see test files in `src/test/java/com/payment` as reference)
 

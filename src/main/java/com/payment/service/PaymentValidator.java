@@ -1,7 +1,7 @@
 package com.payment.service;
 
 import com.payment.contracts.CreatePaymentRequest;
-import com.payment.exceptions.InvalidPaymentException;
+import com.payment.errors.InvalidPaymentException;
 import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 

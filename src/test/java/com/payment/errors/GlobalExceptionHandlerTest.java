@@ -1,4 +1,4 @@
-package com.payment.exceptions;
+package com.payment.errors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
