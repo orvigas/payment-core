@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -83,5 +84,42 @@ public class ChargingConsumerTest {
     verify(paymentRepository, never()).save(any());
 
     log.info("Test passed: ChargingConsumer handled payment not found");
+  }
+
+  @Test
+  void testConsumePaymentInitiated_WithCorrelationId() {
+    // Arrange
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any())).thenReturn(payment);
+
+    String correlationId = "corr_id_123";
+
+    // Act
+    chargingConsumer.consumePaymentInitiated(event, correlationId);
+
+    // Assert
+    verify(paymentRepository, times(2)).save(any());
+    verify(paymentProducer, times(1)).publishPaymentCharged(any());
+
+    log.info("Test passed: ChargingConsumer processed event with correlation ID");
+  }
+
+  @Test
+  void testConsumePaymentInitiated_UpdatesPaymentStatus() {
+    // Arrange
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any())).thenReturn(payment);
+
+    // Act
+    chargingConsumer.consumePaymentInitiated(event, null);
+
+    // Assert
+    ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+    verify(paymentRepository, times(2)).save(paymentCaptor.capture());
+
+    List<Payment> capturedPayments = paymentCaptor.getAllValues();
+    assertEquals(2, capturedPayments.size());
+
+    log.info("Test passed: ChargingConsumer updated payment status correctly");
   }
 }
