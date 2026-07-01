@@ -207,291 +207,177 @@ The project follows a classic layered architecture pattern:
 
 ### Architecture Diagrams
 
-#### System Architecture Diagram
+#### System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Payment Core System                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐                                                          │
-│  │   Clients    │                                                          │
-│  │  (REST API)  │                                                          │
-│  └──────┬───────┘                                                          │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐          │
-│  │          Payment Core Application (Spring Boot 3.5)          │          │
-│  │                                                               │          │
-│  │  ┌─────────────────────────────────────────────────────┐    │          │
-│  │  │  REST Layer (PaymentController)                     │    │          │
-│  │  │  POST /api/v1/payments - Create                     │    │          │
-│  │  │  GET /api/v1/payments/{id} - Retrieve              │    │          │
-│  │  │  POST /api/v1/payments/{id}/confirm - Confirm      │    │          │
-│  │  │  POST /api/v1/payments/{id}/refund - Refund        │    │          │
-│  │  └─────────────────────────────────────────────────────┘    │          │
-│  │                      ▼                                       │          │
-│  │  ┌─────────────────────────────────────────────────────┐    │          │
-│  │  │  Service Layer (PaymentService, PaymentValidator)   │    │          │
-│  │  │  ✓ Business Logic    ✓ Validation                   │    │          │
-│  │  │  ✓ Event Publishing  ✓ Transactional Consistency   │    │          │
-│  │  └─────────────────────────────────────────────────────┘    │          │
-│  │                      ▼                                       │          │
-│  │  ┌──────────────────────┬──────────────────────────────┐   │          │
-│  │  │ Repository Layer     │  Kafka Producer              │   │          │
-│  │  │ (PaymentRepository)  │  (PaymentProducer)           │   │          │
-│  │  │ Spring Data JPA      │  Publishes Events            │   │          │
-│  │  └──────────────────────┴──────────────────────────────┘   │          │
-│  │         ▼                          ▼                        │          │
-│  │    PostgreSQL              Apache Kafka 3.x                 │          │
-│  │    Database                Message Broker                   │          │
-│  └──────────────────────────────────────────────────────────────┘          │
-│         │                          │                                       │
-│         ▼                          ▼                                       │
-│  ┌─────────────────┐  ┌────────────────────────────────────┐             │
-│  │  Payment Data   │  │  Kafka Consumers                   │             │
-│  │  persistence    │  │  ┌──────────────────────────────┐ │             │
-│  │                 │  │  │ ChargingConsumer             │ │             │
-│  │                 │  │  │ → Process charging           │ │             │
-│  │                 │  │  └──────────────────────────────┘ │             │
-│  │                 │  │  ┌──────────────────────────────┐ │             │
-│  │                 │  │  │ NotificationConsumer         │ │             │
-│  │                 │  │  │ → Send notifications         │ │             │
-│  │                 │  │  └──────────────────────────────┘ │             │
-│  │                 │  │  ┌──────────────────────────────┐ │             │
-│  │                 │  │  │ AnalyticsConsumer            │ │             │
-│  │                 │  │  │ → Track metrics              │ │             │
-│  │                 │  │  └──────────────────────────────┘ │             │
-│  └─────────────────┘  └────────────────────────────────────┘             │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+CLIENT (REST API)
+       |
+       v
+┌──────────────────────────────────────┐
+│   PAYMENT CORE (Spring Boot 3.5)     │
+│  ┌────────────────────────────────┐  │
+│  │ REST Controller Layer          │  │
+│  │ /api/v1/payments               │  │
+│  │ - POST (Create)                │  │
+│  │ - GET (Retrieve)               │  │
+│  │ - POST confirm (Confirm)       │  │
+│  │ - POST refund (Refund)         │  │
+│  └────────────────────────────────┘  │
+│              |                        │
+│              v                        │
+│  ┌────────────────────────────────┐  │
+│  │ Service Layer                  │  │
+│  │ - PaymentService               │  │
+│  │ - PaymentValidator             │  │
+│  │ - Event Publishing             │  │
+│  └────────────────────────────────┘  │
+│         |                  |          │
+│         v                  v          │
+│   ┌─────────────┐    ┌────────────┐  │
+│   │ Repository  │    │   Kafka    │  │
+│   │ (JPA)       │    │  Producer  │  │
+│   └─────────────┘    └────────────┘  │
+└──────────────────────────────────────┘
+       |                     |
+       v                     v
+   DATABASE            KAFKA BROKER
+   (PostgreSQL)        (Message Queue)
+       |                     |
+       |              ┌──────┼──────┐
+       |              |      |      |
+       v              v      v      v
+   Payments      Charging Notification Analytics
+   Table         Consumer  Consumer   Consumer
 ```
 
-#### Application Architecture Diagram (Layered)
+#### Application Architecture (Layered)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  REST API Layer                         │
-│          PaymentController (/api/v1/payments)           │
-│  Create, Retrieve, Confirm, Refund Operations           │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                Service Layer                            │
-│  PaymentService (Business Logic & Transactions)         │
-│  PaymentValidator (Request Validation)                  │
-│  PaymentProducer (Event Publishing)                     │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-        ┌──────────────┴──────────────┐
-        │                             │
-        ▼                             ▼
-┌─────────────────────┐      ┌──────────────────────┐
-│  Repository Layer   │      │  Event Streaming     │
-│  PaymentRepository  │      │  (Kafka Producer)    │
-│  (JPA Interface)    │      │                      │
-└──────────┬──────────┘      │  Publishes:          │
-           │                 │  - PaymentInitiated  │
-           │                 │  - PaymentCharged    │
-           │                 │  - PaymentCompleted  │
-           │                 │  - PaymentFailed     │
-           ▼                 └──────────┬───────────┘
-┌─────────────────────┐               │
-│  Data Access        │               │
-│  PostgreSQL (15)    │               │
-│                     │               ▼
-│  Tables:            │      ┌──────────────────────┐
-│  - payments         │      │   Kafka Brokers      │
-│  - indices on:      │      │   (Message Queue)    │
-│    * paymentId      │      │                      │
-│    * userId         │      │  Topics:             │
-│    * status         │      │  - payment-initiated │
-│                     │      │  - payment-charged   │
-└─────────────────────┘      │  - payment-completed │
-                             │  - payment-failed    │
-                             └──────────┬───────────┘
-                                        │
-                    ┌───────────────────┼───────────────────┐
-                    │                   │                   │
-                    ▼                   ▼                   ▼
-            ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-            │   Charging   │   │ Notification │   │  Analytics   │
-            │  Consumer    │   │  Consumer    │   │  Consumer    │
-            │              │   │              │   │              │
-            │ Processes    │   │ Sends emails │   │ Tracks       │
-            │ payment      │   │ notifications│   │ metrics      │
-            │ charging     │   │              │   │              │
-            └──────────────┘   └──────────────┘   └──────────────┘
+┌─────────────────────────────────────┐
+│   REST API Layer                    │
+│   PaymentController                 │
+│   - Endpoints: /api/v1/payments     │
+└────────────────┬────────────────────┘
+                 |
+┌────────────────v────────────────────┐
+│   Service Layer                     │
+│   - PaymentService (Business Logic) │
+│   - PaymentValidator (Validation)   │
+│   - PaymentProducer (Event Pub)     │
+└────┬──────────────────────┬─────────┘
+     |                      |
+┌────v──────────┐   ┌──────v──────────┐
+│ Repository    │   │ Kafka Producer  │
+│ Layer         │   │ - Publishes:    │
+│ - JPA         │   │   * Initiated   │
+│ - Queries     │   │   * Charged     │
+└────┬──────────┘   │   * Completed   │
+     |              │   * Failed      │
+┌────v──────────┐   └──────┬──────────┘
+│ Data Access   │          |
+│ PostgreSQL    │   ┌──────v──────────┐
+│ - Payments    │   │ Kafka Topics    │
+│ - Indexes     │   │ - 4 Topics      │
+└───────────────┘   │ - 3 Partitions  │
+                    │ - 3 Consumers   │
+                    └─────────────────┘
 ```
 
 #### Component Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Payment Core System                           │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              API & Controller Layer                      │  │
-│  │  ┌────────────────────────────────────────────────────┐ │  │
-│  │  │ PaymentController                                 │ │  │
-│  │  │ - createPayment()                                 │ │  │
-│  │  │ - getPayment()                                    │ │  │
-│  │  │ - confirmPayment()                                │ │  │
-│  │  │ - refundPayment()                                 │ │  │
-│  │  │ - handleExceptions()                              │ │  │
-│  │  └────────────────────────────────────────────────────┘ │  │
-│  └──────────────┬───────────────────────────────────────────┘  │
-│                 │                                               │
-│  ┌──────────────▼───────────────────────────────────────────┐  │
-│  │            Service Layer                                │  │
-│  │  ┌─────────────────────────────────────────────────┐   │  │
-│  │  │ PaymentService                PaymentValidator  │   │  │
-│  │  │ - Business Logic              - Request         │   │  │
-│  │  │ - Transactional               Validation       │   │  │
-│  │  │ - Event Publishing           │                 │   │  │
-│  │  │ - Error Handling             │                 │   │  │
-│  │  └──────────┬──────────────────┬─┘                │   │  │
-│  │             │                  │                  │   │  │
-│  │  ┌──────────▼─────────────────▼──────────────┐   │   │  │
-│  │  │ PaymentProducer (Kafka)                   │   │   │  │
-│  │  │ - publishPaymentInitiated()               │   │   │  │
-│  │  │ - publishPaymentCharged()                 │   │   │  │
-│  │  │ - publishPaymentCompleted()               │   │   │  │
-│  │  │ - Event Serialization (JSON)              │   │   │  │
-│  │  └──────────────────────────────────────────┘   │   │  │
-│  └──────────────────────────────────────────────────┘   │  │
-│                 │                                        │  │
-│  ┌──────────────▼──────────────────────────────────┐    │  │
-│  │         Data Access Layer                       │    │  │
-│  │  ┌───────────────────────────────────────────┐ │    │  │
-│  │  │ PaymentRepository (Spring Data JPA)       │ │    │  │
-│  │  │ - findByPaymentId()                       │ │    │  │
-│  │  │ - save()                                  │ │    │  │
-│  │  │ - Custom Queries                          │ │    │  │
-│  │  └───────────────────────────────────────────┘ │    │  │
-│  └──────────────┬───────────────────────────────────┘    │  │
-│                 │                                        │  │
-│  ┌──────────────▼──────────────────────────────────┐    │  │
-│  │         Model & Contracts                       │    │  │
-│  │  ┌──────────────┐  ┌─────────────────────────┐ │    │  │
-│  │  │ Payment      │  │ CreatePaymentRequest   │ │    │  │
-│  │  │ (JPA Entity) │  │ (Record/DTO)           │ │    │  │
-│  │  │              │  │                        │ │    │  │
-│  │  │ - paymentId  │  │ - userId               │ │    │  │
-│  │  │ - userId     │  │ - amount               │ │    │  │
-│  │  │ - amount     │  │ - currency             │ │    │  │
-│  │  │ - status     │  │ - merchant             │ │    │  │
-│  │  │ - createdAt  │  │ - description          │ │    │  │
-│  │  └──────────────┘  └─────────────────────────┘ │    │  │
-│  │  ┌──────────────┐  ┌─────────────────────────┐ │    │  │
-│  │  │PaymentStatus │  │ PaymentResponse         │ │    │  │
-│  │  │(Enum)        │  │ (Record/DTO)            │ │    │  │
-│  │  └──────────────┘  └─────────────────────────┘ │    │  │
-│  └──────────────────────────────────────────────────┘    │  │
-│                                                           │  │
-└───────────────────────────────────────────────────────────┘  │
-                                                                │
-                    Kafka Topics & Events                       │
-│  ┌─────────────────────────────────────────────────────┐     │
-│  │ payment-initiated        payment-charged             │     │
-│  │ payment-completed        payment-failed              │     │
-│  │                                                       │     │
-│  │ Events (Java Records):                               │     │
-│  │ - PaymentInitiatedEvent  - PaymentChargedEvent       │     │
-│  │ - PaymentCompletedEvent  - PaymentFailedEvent        │     │
-│  │                                                       │     │
-│  │ Consumers:                                            │     │
-│  │ - ChargingConsumer (charging-service group)          │     │
-│  │ - NotificationConsumer (notification-service group)  │     │
-│  │ - AnalyticsConsumer (analytics-service group)        │     │
-│  └─────────────────────────────────────────────────────┘     │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│         PAYMENT CORE COMPONENTS                 │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  PaymentController                              │
+│  ├─ createPayment()                             │
+│  ├─ getPayment()                                │
+│  ├─ confirmPayment()                            │
+│  └─ refundPayment()                             │
+│         |                                       │
+│         v                                       │
+│  PaymentService                                 │
+│  ├─ Business Logic                              │
+│  ├─ Transactions                                │
+│  └─ Event Publishing                            │
+│         |                                       │
+│  ┌──────┴──────┬──────────┐                    │
+│  |             |          |                    │
+│  v             v          v                    │
+│  PaymentValidator  PaymentRepository  Kafka    │
+│  - Validation      - JPA Queries     Producer  │
+│  - Business Rules  - Database Access - Events  │
+│                                                 │
+│  Models/Contracts:                              │
+│  - Payment (Entity)                             │
+│  - PaymentStatus (Enum)                         │
+│  - CreatePaymentRequest (Record)                │
+│  - PaymentResponse (Record)                     │
+│                                                 │
+│  Kafka Events:                                  │
+│  - PaymentInitiatedEvent                        │
+│  - PaymentChargedEvent                          │
+│  - PaymentCompletedEvent                        │
+│  - PaymentFailedEvent                           │
+│                                                 │
+│  Kafka Consumers:                               │
+│  - ChargingConsumer                             │
+│  - NotificationConsumer                         │
+│  - AnalyticsConsumer                            │
+└─────────────────────────────────────────────────┘
 ```
 
 #### Deployment Diagram
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                         Docker Compose Environment                     │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌──────────────────────┐     ┌────────────────────┐                 │
-│  │  Docker Host (Local) │     │   Docker Network   │                 │
-│  │                      │     │   payment-network  │                 │
-│  │  ┌────────────────┐  │     └────────────────────┘                 │
-│  │  │  Port 8080     │  │                                             │
-│  │  │  (App)         │  │                                             │
-│  │  └────────┬───────┘  │                                             │
-│  │           │          │     ┌────────────────────────────────────┐  │
-│  │           │          │     │  Container: payment-core           │  │
-│  │           │          │     │  Image: payment-core:latest        │  │
-│  │           │          │     │  Port: 8080                        │  │
-│  │           │          │     │                                    │  │
-│  │           │          │     │  Spring Boot Application           │  │
-│  │           │          │     │  - JVM: Java 21                   │  │
-│  │           │          │     │  - Framework: Spring Boot 3.5.0    │  │
-│  │           │          │     │  - Port: 8080                      │  │
-│  │           │          │     │                                    │  │
-│  │           └─────────────────► REST API Endpoints                │  │
-│  │                      │     │  /api/v1/payments                  │  │
-│  │                      │     │  /health, /info                    │  │
-│  │                      │     └──────┬─────────────────────────────┘  │
-│  │                      │            │                               │
-│  │                      │     ┌──────▼──────────────────────────┐     │
-│  │                      │     │  Container: postgres            │     │
-│  │                      │     │  Image: postgres:15-alpine      │     │
-│  │                      │     │  Port: 5432                     │     │
-│  │                      │     │                                │     │
-│  │                      │     │  PostgreSQL Database:           │     │
-│  │                      │     │  - Database: payment_db         │     │
-│  │                      │     │  - User: postgres               │     │
-│  │                      │     │  - Persistence: payments table  │     │
-│  │                      │     │  - Indexes on paymentId,        │     │
-│  │                      │     │    userId, status               │     │
-│  │                      │     │                                │     │
-│  │                      │     │  Seed Data:                     │     │
-│  │                      │     │  - 1000 payment records         │     │
-│  │                      │     └──────────────────────────────────┘     │
-│  │                      │                                              │
-│  │                      │     ┌──────────────────────────────────┐     │
-│  │                      │     │  Container: kafka               │     │
-│  │                      │     │  Image: confluentinc/cp-kafka   │     │
-│  │                      │     │  Port: 9092                     │     │
-│  │                      │     │                                │     │
-│  │                      │     │  Apache Kafka:                  │     │
-│  │                      │     │  - Broker: kafka:9092           │     │
-│  │                      │     │  - Topics: 4 topics             │     │
-│  │                      │     │    * payment-initiated          │     │
-│  │                      │     │    * payment-charged            │     │
-│  │                      │     │    * payment-completed          │     │
-│  │                      │     │    * payment-failed             │     │
-│  │                      │     │  - Partitions: 3                │     │
-│  │                      │     │  - Replicas: 1                  │     │
-│  │                      │     │                                │     │
-│  │                      │     │  Consumer Groups:               │     │
-│  │                      │     │  - charging-service             │     │
-│  │                      │     │  - notification-service         │     │
-│  │                      │     │  - analytics-service            │     │
-│  │                      │     └──────────────────────────────────┘     │
-│  │                      │                                              │
-│  │                      │     ┌──────────────────────────────────┐     │
-│  │                      │     │  Container: zookeeper           │     │
-│  │                      │     │  Image: confluentinc/cp-zookeeper     │
-│  │                      │     │  Port: 2181                     │     │
-│  │                      │     │                                │     │
-│  │                      │     │  Zookeeper:                     │     │
-│  │                      │     │  - Kafka coordination           │     │
-│  │                      │     │  - Broker management            │     │
-│  │                      │     └──────────────────────────────────┘     │
-│  │                      │                                              │
-│  └──────────────────────┘                                              │
-│                                                                        │
-└────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│      DOCKER COMPOSE ENVIRONMENT             │
+├─────────────────────────────────────────────┤
+│                                             │
+│  Host (Local Development)                   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ payment-core Container              │   │
+│  │ Image: payment-core:latest          │   │
+│  │ Port: 8080                          │   │
+│  │ Java 21, Spring Boot 3.5.0          │   │
+│  │ REST API: /api/v1/payments          │   │
+│  │ Health: /health, /info              │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ postgres Container                  │   │
+│  │ Image: postgres:15-alpine           │   │
+│  │ Port: 5432                          │   │
+│  │ Database: payment_db                │   │
+│  │ Seed: 1000 payment records          │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ kafka Container                     │   │
+│  │ Image: confluentinc/cp-kafka        │   │
+│  │ Port: 9092                          │   │
+│  │ Topics: 4                           │   │
+│  │ Partitions: 3, Replicas: 1         │   │
+│  │ Groups: charging, notification,     │   │
+│  │         analytics                   │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ zookeeper Container                 │   │
+│  │ Image: confluentinc/cp-zookeeper    │   │
+│  │ Port: 2181                          │   │
+│  │ Manages: Kafka coordination          │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  Docker Network: payment-network            │
+└─────────────────────────────────────────────┘
 
-Data Flow: API Request → Spring Boot App → PostgreSQL + Kafka Producer
-           Kafka → Consumers (Charging, Notification, Analytics)
+Data Flow:
+  API Request → Spring Boot App → PostgreSQL
+  Spring Boot → Kafka Producer → Kafka Broker
+  Kafka → Consumers (Charging, Notification, Analytics)
 ```
 
 ### Key Design Patterns
