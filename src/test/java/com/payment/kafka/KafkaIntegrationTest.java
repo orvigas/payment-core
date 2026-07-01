@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,9 +38,6 @@ public class KafkaIntegrationTest {
 
   @Autowired
   private KafkaTemplate<String, Object> kafkaTemplate;
-
-  @Autowired
-  private EmbeddedKafkaBroker embeddedKafka;
 
   @Autowired
   private ConsumerFactory<String, PaymentInitiatedEvent> paymentInitiatedEventConsumerFactory;
@@ -72,8 +68,9 @@ public class KafkaIntegrationTest {
   @Test
   void testPublishPaymentInitiatedEvent() {
     // Arrange
+    String paymentId = "pay_123";
     PaymentInitiatedEvent event = PaymentInitiatedEvent.builder()
-        .paymentId("pay_123")
+        .paymentId(paymentId)
         .userId("user_456")
         .amount(new BigDecimal("5000.00"))
         .currency("MXN")
@@ -82,7 +79,7 @@ public class KafkaIntegrationTest {
         .build();
 
     // Act
-    kafkaTemplate.send(KafkaTopics.PAYMENT_INITIATED, event.getPaymentId(), event);
+    kafkaTemplate.send(KafkaTopics.PAYMENT_INITIATED, paymentId, event);
 
     // Assert
     ConsumerRecord<String, PaymentInitiatedEvent> record = KafkaTestUtils.getSingleRecord(consumer,

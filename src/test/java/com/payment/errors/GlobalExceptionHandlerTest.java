@@ -8,6 +8,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for {@link GlobalExceptionHandler}.
+ *
+ * @author orvigas@gmail.com
+ */
 class GlobalExceptionHandlerTest {
 
   private GlobalExceptionHandler exceptionHandler;
@@ -22,13 +27,14 @@ class GlobalExceptionHandlerTest {
     PaymentNotFoundException exception = new PaymentNotFoundException("Payment not found: pay_123");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handlePaymentNotFound(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-    assertNotNull(response.getBody());
-    assertEquals(404, response.getBody().get("status"));
-    assertEquals("Not Found", response.getBody().get("error"));
-    assertEquals("Payment not found: pay_123", response.getBody().get("message"));
-    assertNotNull(response.getBody().get("timestamp"));
+    assertNotNull(body);
+    assertEquals(404, body.get("status"));
+    assertEquals("Not Found", body.get("error"));
+    assertEquals("Payment not found: pay_123", body.get("message"));
+    assertNotNull(body.get("timestamp"));
   }
 
   @Test
@@ -36,9 +42,11 @@ class GlobalExceptionHandlerTest {
     PaymentNotFoundException exception = new PaymentNotFoundException("Payment ID: xyz not found");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handlePaymentNotFound(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-    assertEquals("Payment ID: xyz not found", response.getBody().get("message"));
+    assertNotNull(body);
+    assertEquals("Payment ID: xyz not found", body.get("message"));
   }
 
   @Test
@@ -46,13 +54,14 @@ class GlobalExceptionHandlerTest {
     InvalidPaymentException exception = new InvalidPaymentException("Amount is invalid");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidPayment(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-    assertNotNull(response.getBody());
-    assertEquals(400, response.getBody().get("status"));
-    assertEquals("Bad Request", response.getBody().get("error"));
-    assertEquals("Amount is invalid", response.getBody().get("message"));
-    assertNotNull(response.getBody().get("timestamp"));
+    assertNotNull(body);
+    assertEquals(400, body.get("status"));
+    assertEquals("Bad Request", body.get("error"));
+    assertEquals("Amount is invalid", body.get("message"));
+    assertNotNull(body.get("timestamp"));
   }
 
   @Test
@@ -60,9 +69,11 @@ class GlobalExceptionHandlerTest {
     InvalidPaymentException exception = new InvalidPaymentException("Only PENDING payments can be confirmed");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidPayment(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-    assertEquals("Only PENDING payments can be confirmed", response.getBody().get("message"));
+    assertNotNull(body);
+    assertEquals("Only PENDING payments can be confirmed", body.get("message"));
   }
 
   @Test
@@ -70,13 +81,14 @@ class GlobalExceptionHandlerTest {
     Exception exception = new RuntimeException("Some unexpected error");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleGenericException(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-    assertNotNull(response.getBody());
-    assertEquals(500, response.getBody().get("status"));
-    assertEquals("Internal Server Error", response.getBody().get("error"));
-    assertEquals("An unexpected error occurred", response.getBody().get("message"));
-    assertNotNull(response.getBody().get("timestamp"));
+    assertNotNull(body);
+    assertEquals(500, body.get("status"));
+    assertEquals("Internal Server Error", body.get("error"));
+    assertEquals("An unexpected error occurred", body.get("message"));
+    assertNotNull(body.get("timestamp"));
   }
 
   @Test
@@ -84,10 +96,12 @@ class GlobalExceptionHandlerTest {
     Exception exception = new NullPointerException();
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleGenericException(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-    assertEquals(500, response.getBody().get("status"));
-    assertEquals("An unexpected error occurred", response.getBody().get("message"));
+    assertNotNull(body);
+    assertEquals(500, body.get("status"));
+    assertEquals("An unexpected error occurred", body.get("message"));
   }
 
   @Test
@@ -95,9 +109,11 @@ class GlobalExceptionHandlerTest {
     Exception exception = new IllegalArgumentException("Bad argument");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleGenericException(exception);
+    Map<String, Object> body = response.getBody();
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-    assertEquals("An unexpected error occurred", response.getBody().get("message"));
+    assertNotNull(body);
+    assertEquals("An unexpected error occurred", body.get("message"));
   }
 
   @Test
@@ -120,8 +136,10 @@ class GlobalExceptionHandlerTest {
     InvalidPaymentException exception = new InvalidPaymentException("Error");
 
     ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidPayment(exception);
+    Map<String, Object> body = response.getBody();
 
-    assertNotNull(response.getBody().get("timestamp"));
+    assertNotNull(body);
+    assertNotNull(body.get("timestamp"));
   }
 
   @Test

@@ -23,6 +23,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit tests for {@link PaymentController}.
+ *
+ * @author orvigas@gmail.com
+ */
 @ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
 
@@ -65,10 +70,12 @@ class PaymentControllerTest {
         .thenReturn(paymentResponse);
 
     ResponseEntity<PaymentResponse> response = paymentController.createPayment(createPaymentRequest);
+    PaymentResponse body = response.getBody();
 
     assertEquals(HttpStatus.CREATED, response.getStatusCode());
-    assertEquals("pay_123", response.getBody().paymentId());
-    assertEquals(PaymentStatus.PENDING, response.getBody().status());
+    assertNotNull(body);
+    assertEquals("pay_123", body.paymentId());
+    assertEquals(PaymentStatus.PENDING, body.status());
     verify(paymentService).createPayment(any(CreatePaymentRequest.class));
   }
 
@@ -88,9 +95,11 @@ class PaymentControllerTest {
         .thenReturn(paymentResponse);
 
     ResponseEntity<PaymentResponse> response = paymentController.getPayment("pay_123");
+    PaymentResponse body = response.getBody();
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals("pay_123", response.getBody().paymentId());
+    assertNotNull(body);
+    assertEquals("pay_123", body.paymentId());
     verify(paymentService).getPayment("pay_123");
   }
 
@@ -123,9 +132,11 @@ class PaymentControllerTest {
         .thenReturn(confirmedResponse);
 
     ResponseEntity<PaymentResponse> response = paymentController.confirmPayment("pay_123");
+    PaymentResponse body = response.getBody();
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(PaymentStatus.COMPLETED, response.getBody().status());
+    assertNotNull(body);
+    assertEquals(PaymentStatus.COMPLETED, body.status());
     verify(paymentService).confirmPayment("pay_123");
   }
 
@@ -168,9 +179,11 @@ class PaymentControllerTest {
         .thenReturn(refundedResponse);
 
     ResponseEntity<PaymentResponse> response = paymentController.refundPayment("pay_123");
+    PaymentResponse body = response.getBody();
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(PaymentStatus.REFUNDED, response.getBody().status());
+    assertNotNull(body);
+    assertEquals(PaymentStatus.REFUNDED, body.status());
     verify(paymentService).refundPayment("pay_123");
   }
 

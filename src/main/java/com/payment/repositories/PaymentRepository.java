@@ -3,7 +3,6 @@ package com.payment.repositories;
 import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +16,6 @@ import java.util.Optional;
  * @author Orlando Villegas (orvigas@gmail.com)
  * @version 1.0.0
  */
-@Repository
 public interface PaymentRepository extends JpaRepository<Payment, String> {
 
   /**

@@ -21,11 +21,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        "[format_sql]": true
         jdbc:
-          batch_size: 20
-        order_inserts: true
-        order_updates: true
+          "[batch_size]": 20
+        "[order_inserts]": true
+        "[order_updates]": true
 
 server:
   port: 8080
@@ -43,15 +43,16 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
-      livenessState:
-        enabled: true
-      readinessState:
-        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 logging:
   level:
     root: INFO
-    com.payment: DEBUG
+    "[com.payment]": DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -68,27 +69,10 @@ springdoc:
     use-root-path: true
     urls-primary-name: payment-core
     display-operation-id: false
-    enable-deep-linking: true
+    deep-linking: true
     show-extensions: false
     try-it-out-enabled: true
     filter: false
     layout: StandaloneLayout
   show-actuator: false
   use-fqn: true
-
-kafka:
-  bootstrap-servers: kafka:9092 # Docker network
-  producer:
-    key-serializer: org.apache.kafka.common.serialization.StringSerializer
-    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    acks: all
-    retries: 3
-    compression-type: snappy
-
-  consumer:
-    bootstrap-servers: kafka:9092
-    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-    auto-offset-reset: earliest
-    max-poll-records: 100
-    group-id: payment-service

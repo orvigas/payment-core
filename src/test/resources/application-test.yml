@@ -16,4 +16,4 @@ spring:
 logging:
   level:
     root: WARN
-    com.payment: DEBUG
+    "[com.payment]": DEBUG

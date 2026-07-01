@@ -1,6 +1,5 @@
 package com.payment.events;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -12,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for payment event classes.
+ *
+ * @author orvigas@gmail.com
  */
 @Slf4j
 public class PaymentEventTest {
-
-  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
   void testPaymentInitiatedEvent() {
