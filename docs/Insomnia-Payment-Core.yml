@@ -1,0 +1,301 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Payment Core API
+meta:
+  id: wrk_payment_core
+  created: 1719829200000
+  modified: 1719829200000
+  description: "Testing suite for Payment Core REST API"
+collection:
+  - url: "{{ _.base_url }}/health"
+    name: Health Check
+    meta:
+      id: req_health
+      created: 1719829200001
+      modified: 1719829200001
+      isPrivate: false
+      description: "Check application health status"
+      sortKey: -1719829200001
+    method: GET
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/info"
+    name: Application Info
+    meta:
+      id: req_info
+      created: 1719829200002
+      modified: 1719829200002
+      isPrivate: false
+      description: "Get application information and version"
+      sortKey: -1719829200002
+    method: GET
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments"
+    name: Create Payment - Success
+    meta:
+      id: req_create_success
+      created: 1719829200003
+      modified: 1719829200003
+      isPrivate: false
+      description: "Create a new payment with valid data"
+      sortKey: -1719829200003
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "userId": "user_123",
+          "amount": 5000.00,
+          "currency": "MXN",
+          "merchant": "jersey-mikes",
+          "description": "Test Payment from Insomnia"
+        }
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments"
+    name: Create Payment - USD Currency
+    meta:
+      id: req_create_usd
+      created: 1719829200004
+      modified: 1719829200004
+      isPrivate: false
+      description: "Create a payment with USD currency"
+      sortKey: -1719829200004
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "userId": "user_456",
+          "amount": 2500.50,
+          "currency": "USD",
+          "merchant": "starbucks",
+          "description": "USD Payment Test"
+        }
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments"
+    name: Create Payment - Invalid (Negative Amount)
+    meta:
+      id: req_create_invalid
+      created: 1719829200005
+      modified: 1719829200005
+      isPrivate: false
+      description: "Test validation with negative amount"
+      sortKey: -1719829200005
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "userId": "user_invalid",
+          "amount": -100.00,
+          "currency": "MXN",
+          "merchant": "invalid-merchant",
+          "description": "Invalid payment"
+        }
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/{{ _.payment_id }}"
+    name: Get Payment - Success
+    meta:
+      id: req_get_success
+      created: 1719829200006
+      modified: 1719829200006
+      isPrivate: false
+      description: "Retrieve payment details by ID"
+      sortKey: -1719829200006
+    method: GET
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/invalid-id-12345"
+    name: Get Payment - Not Found
+    meta:
+      id: req_get_notfound
+      created: 1719829200007
+      modified: 1719829200007
+      isPrivate: false
+      description: "Test 404 response for non-existent payment"
+      sortKey: -1719829200007
+    method: GET
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/{{ _.payment_id }}/confirm"
+    name: Confirm Payment - Success
+    meta:
+      id: req_confirm_success
+      created: 1719829200008
+      modified: 1719829200008
+      isPrivate: false
+      description: "Confirm a pending payment"
+      sortKey: -1719829200008
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/invalid-payment-id/confirm"
+    name: Confirm Payment - Not Found
+    meta:
+      id: req_confirm_notfound
+      created: 1719829200009
+      modified: 1719829200009
+      isPrivate: false
+      description: "Test confirmation on non-existent payment"
+      sortKey: -1719829200009
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/{{ _.payment_id }}/refund"
+    name: Refund Payment - Success
+    meta:
+      id: req_refund_success
+      created: 1719829200010
+      modified: 1719829200010
+      isPrivate: false
+      description: "Refund a completed payment"
+      sortKey: -1719829200010
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/payments/invalid-payment-id/refund"
+    name: Refund Payment - Not Found
+    meta:
+      id: req_refund_notfound
+      created: 1719829200011
+      modified: 1719829200011
+      isPrivate: false
+      description: "Test refund on non-existent payment"
+      sortKey: -1719829200011
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_payment_core
+    created: 1719829200000
+    modified: 1719829200000
+environments:
+  name: Base Environment
+  meta:
+    id: env_base
+    created: 1719829200000
+    modified: 1719829200000
+    isPrivate: false
+  data:
+    base_url: "http://localhost:8080"
+    payment_id: ""
