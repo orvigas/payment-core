@@ -1,4 +1,4 @@
-package com.payment.service;
+package com.payment.services;
 
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.contracts.PaymentResponse;
@@ -6,7 +6,7 @@ import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.errors.InvalidPaymentException;
-import com.payment.repository.PaymentRepository;
+import com.payment.repositories.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package com.payment.repository;
+package com.payment.repositories;
 
 import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;

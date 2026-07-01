@@ -1,4 +1,4 @@
-package com.payment.service;
+package com.payment.services;
 
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.errors.InvalidPaymentException;

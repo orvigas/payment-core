@@ -1,8 +1,8 @@
-package com.payment.api;
+package com.payment.controllers;
 
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.contracts.PaymentResponse;
-import com.payment.service.PaymentService;
+import com.payment.services.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

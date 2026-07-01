@@ -145,15 +145,19 @@ open target/site/jacoco/index.html
 
 The project follows a classic layered architecture pattern:
 
-1. **API Layer** (`com.payment.api`): REST endpoints and request/response handling
+1. **Controllers Layer** (`com.payment.controllers`): REST endpoints and request/response handling
    - `PaymentController`: Exposes `/api/v1/payments` endpoints for all payment operations
 
-2. **Service Layer** (`com.payment.service`): Business logic and orchestration
+2. **Services Layer** (`com.payment.services`): Business logic and orchestration
    - `PaymentService`: Core payment operations (create, retrieve, confirm, refund) with transactional consistency
    - `PaymentValidator`: Request validation logic and business rule enforcement
 
-3. **Data Access Layer** (`com.payment.repository`): Database interactions
+3. **Data Access Layer** (`com.payment.repositories`): Database interactions
    - `PaymentRepository`: Spring Data JPA interface for Payment entity with optimized queries
+
+4. **Exception Handling** (`com.payment.errors`): Centralized error responses
+   - `GlobalExceptionHandler`: Maps exceptions to structured HTTP error responses
+   - Custom exceptions: `PaymentNotFoundException`, `InvalidPaymentException`
 
 4. **Exception Handling** (`com.payment.errors`): Centralized error responses
    - `GlobalExceptionHandler`: Maps exceptions to structured HTTP error responses
@@ -162,6 +166,10 @@ The project follows a classic layered architecture pattern:
 5. **Data Model** (`com.payment.models`): JPA entities
    - `Payment`: Main entity with UUID for paymentId, strategic indexing for performance
    - `PaymentStatus`: Enum for payment lifecycle states (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
+
+6. **API Contracts** (`com.payment.contracts`): Request/response DTOs
+   - `CreatePaymentRequest`: Immutable request contract with validation (Java Record)
+   - `PaymentResponse`: Immutable response contract (Java Record)
 
 6. **API Contracts** (`com.payment.contracts`): Request/response DTOs
    - `CreatePaymentRequest`: Immutable request contract with validation (Java Record)
@@ -208,7 +216,7 @@ Payment (Table: payments)
 ```
 src/main/java/com/payment/
 ├── PaymentCoreApplication.java         # Spring Boot entry point
-├── api/
+├── controllers/
 │   └── PaymentController.java          # REST endpoints (@PostMapping, @GetMapping)
 ├── config/                             # Configuration beans
 ├── contracts/
@@ -221,9 +229,9 @@ src/main/java/com/payment/
 │   ├── GlobalExceptionHandler.java     # @RestControllerAdvice for centralized error handling
 │   ├── PaymentNotFoundException.java    # Custom exception for missing payments
 │   └── InvalidPaymentException.java    # Custom exception for invalid operations
-├── repository/
+├── repositories/
 │   └── PaymentRepository.java          # Spring Data JPA interface
-└── service/
+└── services/
     ├── PaymentService.java             # @Service with @Transactional business logic
     └── PaymentValidator.java           # Validation rules
 
