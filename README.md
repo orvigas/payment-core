@@ -23,11 +23,12 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 ## Tech Stack
 
 ### Core Framework
-- **Language:** Java 23 (latest LTS features: Records, Pattern Matching, Virtual Threads support)
+- **Language:** Java 21 (LTS with Records, Pattern Matching, Virtual Threads support)
 - **Framework:** Spring Boot 3.5.0
-- **Spring Version:** 6.2.7
-- **Build Tool:** Apache Maven 3.13.0
-- **JPA Provider:** Hibernate ORM 6.6.15
+- **Spring Version:** 6.2.x (via Spring Boot BOM)
+- **Build Tool:** Apache Maven 3.8+
+- **Compiler Plugin:** Maven Compiler 3.13.0
+- **JPA Provider:** Hibernate ORM (via Spring Boot)
 
 ### Database & Data Access
 - **Database:** PostgreSQL 15 (with Alpine Linux in Docker)
@@ -39,14 +40,15 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 - **Unit Testing:** JUnit 5 (Jupiter)
 - **Mocking:** Mockito 5.2.0 with inline agent support
 - **Integration Testing:** Testcontainers for PostgreSQL
-- **Code Coverage:** JaCoCo
-- **Build Plugin:** Maven Compiler Plugin 3.13.0
+- **Code Coverage:** JaCoCo 0.8.11
+- **Surefire Plugin:** Maven Surefire 3.5.3
 
 ### API & Validation
 - **REST Framework:** Spring Web MVC
 - **Validation Framework:** Jakarta Bean Validation (Jakarta.validation)
 - **JSON Processing:** Jackson (included in Spring Boot)
 - **Logging:** SLF4J with Logback
+- **Boilerplate Reduction:** Lombok 1.18.36
 
 ### DevOps & Containerization
 - **Containerization:** Docker with Dockerfile
@@ -58,9 +60,9 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 
 ### Prerequisites
 
-- Java 23+
-- Maven 3.8+
-- Docker & Docker Compose
+- Java 21 LTS or higher
+- Maven 3.8 or higher
+- Docker & Docker Compose (for local development)
 
 ### Local Development
 
@@ -120,11 +122,17 @@ POST /api/v1/payments/{paymentId}/refund
 # Run all tests
 mvn test
 
-# Run with coverage
-mvn test jacoco:report
+# Run with coverage report
+mvn clean test jacoco:report
 
-# View coverage report
+# View coverage report (opens in browser)
 open target/site/jacoco/index.html
 ```
+
+### Coverage Goals
+
+- **Current:** PaymentService at 69% coverage, additional APIs and handlers need test expansion
+- **Target:** Aim for 80%+ coverage on core business logic (PaymentService, validators)
+- **Strategy:** Prioritize integration tests for database operations and API endpoint testing
 
 ## Architecture
