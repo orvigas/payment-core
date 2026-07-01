@@ -7,18 +7,19 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 
 ## Features
 
-- ✅ RESTful API for payment operations (Create, Retrieve, Confirm, Refund)
-- ✅ Immutable data contracts using Java Records
-- ✅ PostgreSQL database with strategic indexing for optimal query performance
-- ✅ Comprehensive unit and integration testing with JUnit 5 and Mockito
-- ✅ Testcontainers for isolated database testing
-- ✅ Docker & Docker Compose support for local development
-- ✅ Global exception handling with structured error responses
-- ✅ Request validation with Jakarta Bean Validation
-- ✅ Transactional consistency with Spring `@Transactional`
-- ✅ Structured logging with SLF4J
-- ✅ Complete Javadoc documentation for all classes
-- ✅ Spring Boot Actuator for health checks and monitoring
+- RESTful API for payment operations (Create, Retrieve, Confirm, Refund)
+- Event-driven architecture with Apache Kafka for asynchronous payment processing
+- Immutable data contracts using Java Records
+- PostgreSQL database with strategic indexing for optimal query performance
+- Comprehensive unit and integration testing with JUnit 5 and Mockito
+- Testcontainers for isolated database and Kafka testing
+- Docker & Docker Compose support for local development
+- Global exception handling with structured error responses
+- Request validation with Jakarta Bean Validation
+- Transactional consistency with Spring `@Transactional`
+- Structured logging with SLF4J
+- Complete Javadoc documentation for all classes
+- Spring Boot Actuator for health checks and monitoring
 
 ## Tech Stack
 
@@ -38,13 +39,21 @@ A scalable, production-ready payment processing system built with Spring Boot 3,
 - **ORM:** Spring Data JPA with Hibernate
 - **Migrations:** Automatic DDL with `spring.jpa.hibernate.ddl-auto`
 
+### Event-Driven & Messaging
+
+- **Message Broker:** Apache Kafka 3.x
+- **Spring Kafka:** 3.1.2 for producer/consumer integration
+- **Events:** PaymentInitiatedEvent, PaymentCompletedEvent, PaymentFailedEvent, PaymentChargedEvent
+- **Embedded Kafka:** spring-kafka-test for integration testing with embedded brokers
+
 ### Testing & Quality
 
 - **Unit Testing:** JUnit 5 (Jupiter)
 - **Mocking:** Mockito 5.2.0 with inline agent support
-- **Integration Testing:** Testcontainers for PostgreSQL
+- **Integration Testing:** Testcontainers for PostgreSQL and Kafka
 - **Code Coverage:** JaCoCo 0.8.12 (Java 23 compatible)
 - **Surefire Plugin:** Maven Surefire 3.5.3
+- **Test Database:** H2 in-memory database for test profile isolation
 
 ### API & Validation
 
@@ -134,9 +143,28 @@ mvn clean test jacoco:report
 open target/site/jacoco/index.html
 ```
 
+### Kafka Integration Testing
+
+```bash
+# Run Kafka integration tests
+mvn test -Dtest=KafkaIntegrationTest
+
+# Run all tests including Kafka tests
+mvn test
+
+# View test logs for Kafka events
+mvn test -Dtest=KafkaIntegrationTest -X 2>&1 | grep -i kafka
+```
+
+**Test Configuration:**
+- Uses `@EmbeddedKafka` for isolated Kafka broker in test
+- Uses H2 in-memory database for test profile (`application-test.yml`)
+- Typed consumer factories for proper event deserialization
+- Tests verify event serialization, publication, and consumption
+
 ### Code Coverage
 
-- **Current:** 95% code coverage with comprehensive unit and integration test suite (102 tests)
+- **Current:** 95% code coverage with comprehensive unit and integration test suite (105 tests)
 - **Coverage Report:** Run `mvn clean test jacoco:report` to generate detailed coverage report at `target/site/jacoco/index.html`
 
 ## Architecture
@@ -159,10 +187,6 @@ The project follows a classic layered architecture pattern:
    - `GlobalExceptionHandler`: Maps exceptions to structured HTTP error responses
    - Custom exceptions: `PaymentNotFoundException`, `InvalidPaymentException`
 
-4. **Exception Handling** (`com.payment.errors`): Centralized error responses
-   - `GlobalExceptionHandler`: Maps exceptions to structured HTTP error responses
-   - Custom exceptions: `PaymentNotFoundException`, `InvalidPaymentException`
-
 5. **Data Model** (`com.payment.models`): JPA entities
    - `Payment`: Main entity with UUID for paymentId, strategic indexing for performance
    - `PaymentStatus`: Enum for payment lifecycle states (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
@@ -171,9 +195,15 @@ The project follows a classic layered architecture pattern:
    - `CreatePaymentRequest`: Immutable request contract with validation (Java Record)
    - `PaymentResponse`: Immutable response contract (Java Record)
 
-6. **API Contracts** (`com.payment.contracts`): Request/response DTOs
-   - `CreatePaymentRequest`: Immutable request contract with validation (Java Record)
-   - `PaymentResponse`: Immutable response contract (Java Record)
+7. **Event Streaming** (`com.payment.kafka` and `com.payment.events`): Event-driven architecture
+   - `PaymentProducer`: Publishes payment events to Kafka topics
+   - Consumers:
+     - `ChargingConsumer`: Processes payment charging events
+     - `NotificationConsumer`: Sends notifications for payment state changes
+     - `AnalyticsConsumer`: Tracks analytics and metrics
+   - `PaymentInitiatedEvent`, `PaymentCompletedEvent`, `PaymentFailedEvent`, `PaymentChargedEvent`: Immutable event contracts
+   - `KafkaConfig`: Centralized Kafka configuration with typed consumer factories
+   - `KafkaTopics`: Constants for topic and consumer group names
 
 ### Key Design Patterns
 
@@ -218,10 +248,22 @@ src/main/java/com/payment/
 ├── PaymentCoreApplication.java         # Spring Boot entry point
 ├── controllers/
 │   └── PaymentController.java          # REST endpoints (@PostMapping, @GetMapping)
-├── config/                             # Configuration beans
+├── config/
+│   └── KafkaConfig.java                # Kafka configuration (producers, consumers, topics)
 ├── contracts/
 │   ├── CreatePaymentRequest.java       # Request DTO (Java Record)
 │   └── PaymentResponse.java            # Response DTO (Java Record)
+├── events/
+│   ├── PaymentInitiatedEvent.java      # Event: payment creation (Java Record)
+│   ├── PaymentCompletedEvent.java      # Event: payment completion
+│   ├── PaymentFailedEvent.java         # Event: payment failure
+│   └── PaymentChargedEvent.java        # Event: charging operation
+├── kafka/
+│   ├── KafkaTopics.java                # Topic and consumer group constants
+│   ├── PaymentProducer.java            # Publishes payment events to Kafka
+│   ├── ChargingConsumer.java           # Consumes and processes charging events
+│   ├── NotificationConsumer.java       # Consumes and sends notifications
+│   └── AnalyticsConsumer.java          # Consumes and tracks analytics
 ├── models/
 │   ├── Payment.java                    # JPA entity with @Entity annotation
 │   └── PaymentStatus.java              # Status enum
@@ -239,7 +281,7 @@ src/main/resources/
 ├── application.yml                      # Spring Boot configuration (YAML format)
 └── data.sql                             # Database seed: 1000 payment records auto-loaded on startup
 
-src/test/java/com/payment/              # 102 unit/integration tests (95% coverage)
+src/test/java/com/payment/              # 105 unit/integration tests (95% coverage)
 ├── PaymentServiceTest.java             # Unit tests for business logic
 ├── PaymentControllerTest.java          # Integration tests for REST endpoints
 ├── PaymentValidatorTest.java           # Validation logic tests
@@ -256,6 +298,22 @@ src/test/java/com/payment/              # 102 unit/integration tests (95% covera
 - **PostgreSQL Driver**: Included in dependencies for runtime
 - **Connection Pool**: HikariCP (default connection pool in Spring Boot)
 - **Database Initialization**: Automatic table creation via Hibernate DDL followed by seed data population
+
+### Kafka Configuration
+
+- **Bootstrap Servers**: `kafka:9092` (Docker network) for production, overridden in test profiles
+- **Topics**:
+  - `payment-initiated`: Payment creation events (3 partitions)
+  - `payment-charged`: Payment charging events (3 partitions)
+  - `payment-completed`: Payment completion events (3 partitions)
+  - `payment-failed`: Payment failure events (3 partitions)
+- **Consumer Groups**:
+  - `charging-service`: Handles payment charging
+  - `notification-service`: Sends payment notifications
+  - `analytics-service`: Tracks payment analytics
+- **Serialization**: JSON serialization for events with type mapping for proper deserialization
+- **Producer**: Acks all replicas, 3 retries, Snappy compression
+- **Consumer**: Auto-commit disabled, earliest offset reset for new consumers
 
 ### Logging
 
