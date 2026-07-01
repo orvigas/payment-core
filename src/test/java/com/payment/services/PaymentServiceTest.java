@@ -6,6 +6,7 @@ import com.payment.models.PaymentStatus;
 import com.payment.errors.InvalidPaymentException;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.repositories.PaymentRepository;
+import com.payment.kafka.PaymentProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,9 @@ public class PaymentServiceTest {
 
   @Mock
   private PaymentValidator paymentValidator;
+
+  @Mock
+  private PaymentProducer paymentProducer;
 
   @InjectMocks
   private PaymentService paymentService;
