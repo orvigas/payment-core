@@ -12,8 +12,8 @@ import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * REST Controller for payment operations.
