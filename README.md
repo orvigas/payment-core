@@ -343,7 +343,8 @@ mvn test -Dtest=KafkaIntegrationTest -X 2>&1 | grep -i kafka
 
 ### Code Coverage
 
-- **Current:** 93% code coverage with comprehensive unit and integration test suite (135 tests)
+- **Current:** 99% instruction coverage with comprehensive unit and integration test suite (182 tests)
+- **Enforced Minimum:** The build fails below 95% instruction coverage (JaCoCo `check` goal, bound to the `verify` phase)
 - **Coverage Report:** Run `mvn clean test jacoco:report` to generate detailed coverage report at `target/site/jacoco/index.html`
 
 ## Architecture
@@ -635,7 +636,7 @@ src/main/java/com/payment/
 src/main/resources/
 └── application.yml                      # Spring Boot configuration (YAML format)
 
-src/test/java/com/payment/              # 135 unit/integration tests (93% coverage)
+src/test/java/com/payment/              # 182 unit/integration tests (99% coverage)
 ├── PaymentServiceTest.java             # Unit tests for business logic
 ├── PaymentControllerTest.java          # Integration tests for REST endpoints
 ├── PaymentValidatorTest.java           # Validation logic tests
