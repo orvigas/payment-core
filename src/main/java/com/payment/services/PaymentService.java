@@ -1,19 +1,29 @@
 package com.payment.services;
 
+import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.contracts.PaymentResponse;
-import com.payment.models.Payment;
-import com.payment.models.PaymentStatus;
+import com.payment.errors.InvalidPaymentException;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.events.PaymentInitiatedEvent;
 import com.payment.kafka.PaymentProducer;
-import com.payment.errors.InvalidPaymentException;
+import com.payment.models.Payment;
+import com.payment.models.PaymentStatus;
+import com.payment.observability.CustomMetrics;
 import com.payment.repositories.PaymentRepository;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import io.micrometer.core.instrument.Timer;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 
 /**
  * Service layer for payment operations.
@@ -27,14 +37,15 @@ import java.time.LocalDateTime;
  * @author Orlando Villegas (orvigas@gmail.com)
  * @version 1.0.0
  */
+@Data
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PaymentService {
 
   private final PaymentRepository paymentRepository;
   private final PaymentValidator paymentValidator;
   private final PaymentProducer paymentProducer;
+  private final CustomMetrics customMetrics;
 
   /**
    * Creates a new payment transaction.
@@ -52,38 +63,44 @@ public class PaymentService {
   public PaymentResponse createPayment(CreatePaymentRequest request) {
     log.info("Creating payment for user: {}, amount: {}", request.userId(), request.amount());
 
-    // Validar request
-    paymentValidator.validateCreatePaymentRequest(request);
+    Timer.Sample sample = customMetrics.startPaymentProcessing();
 
-    // Crear entidad
-    Payment payment = new Payment();
-    payment.setUserId(request.userId());
-    payment.setAmount(request.amount());
-    payment.setCurrency(request.currency());
-    payment.setMerchant(request.merchant());
-    payment.setDescription(request.description());
-    payment.setStatus(PaymentStatus.PENDING);
+    try {
+      // Validate
+      paymentValidator.validateCreatePaymentRequest(request);
 
-    // Guardar
-    Payment saved = paymentRepository.save(payment);
-    log.info("Payment created: {}", saved.getPaymentId());
+      // Create entity
+      Payment payment = new Payment();
+      payment.setUserId(request.userId());
+      payment.setAmount(request.amount());
+      payment.setCurrency(request.currency());
+      payment.setMerchant(request.merchant());
+      payment.setDescription(request.description());
+      payment.setStatus(PaymentStatus.PENDING);
 
-    // Publish event to Kafka
-    PaymentInitiatedEvent event = PaymentInitiatedEvent.builder()
-        .paymentId(saved.getPaymentId())
-        .userId(saved.getUserId())
-        .amount(saved.getAmount())
-        .currency(saved.getCurrency())
-        .merchant(saved.getMerchant())
-        .description(saved.getDescription())
-        .createdAt(saved.getCreatedAt())
-        .build();
+      // Save
+      Payment saved = paymentRepository.save(payment);
+      customMetrics.incrementPaymentCreated();
+      log.info("Payment created: {}", saved.getPaymentId());
 
-    paymentProducer.publishPaymentInitiated(event);
-    log.debug("PaymentInitiatedEvent published for payment: {}", saved.getPaymentId());
+      // Publish event
+      PaymentInitiatedEvent event = PaymentInitiatedEvent.builder()
+          .paymentId(saved.getPaymentId())
+          .userId(saved.getUserId())
+          .amount(saved.getAmount())
+          .currency(saved.getCurrency())
+          .merchant(saved.getMerchant())
+          .description(saved.getDescription())
+          .createdAt(saved.getCreatedAt())
+          .build();
 
-    // Convertir a response
-    return mapToResponse(saved);
+      paymentProducer.publishPaymentInitiated(event);
+
+      return mapToResponse(saved);
+
+    } finally {
+      customMetrics.recordPaymentProcessing(sample);
+    }
   }
 
   /**
@@ -167,6 +184,86 @@ public class PaymentService {
 
     log.info("Payment refunded: {}", paymentId);
     return mapToResponse(refunded);
+  }
+
+  /**
+   * Charges a payment asynchronously through the external processor.
+   *
+   * <p>Guarded by a circuit breaker, retry, and time limiter. When the circuit
+   * opens or all retries are exhausted, {@link #chargerFallback(String, Exception)}
+   * returns the payment in its current state so the charge can be retried later.
+   *
+   * @param paymentId the payment identifier
+   * @return future completing with the charged payment, or failing if the charge
+   *         is rejected or the payment does not exist
+   */
+  @CircuitBreaker(name = "charger-service", fallbackMethod = "chargerFallback")
+  @Retry(name = "charger-retry")
+  @TimeLimiter(name = "charger-timeout")
+  public CompletableFuture<PaymentResponse> chargePaymentAsync(String paymentId) {
+    log.info("Charging payment: {} (with resilience patterns)", paymentId);
+
+    return CompletableFuture.supplyAsync(() -> {
+      Payment payment = paymentRepository.findByPaymentId(paymentId)
+          .orElseThrow(() -> new PaymentNotFoundException("Payment not found"));
+
+      Timer.Sample sample = customMetrics.startChargeProcessing();
+
+      try {
+        // Simulate external call
+        boolean success = callExternalProcessor(payment);
+
+        if (success) {
+          customMetrics.incrementChargeSuccess();
+          payment.setStatus(PaymentStatus.COMPLETED);
+        } else {
+          customMetrics.incrementChargeFailure();
+          throw new RuntimeException("Charge failed");
+        }
+
+        paymentRepository.save(payment);
+        return mapToResponse(payment);
+
+      } finally {
+        customMetrics.recordChargeProcessing(sample);
+      }
+    });
+  }
+
+  /**
+   * Fallback for {@link #chargePaymentAsync(String)} when the circuit breaker is
+   * open or the charge attempt fails.
+   *
+   * <p>Returns the payment in its current state instead of failing the request;
+   * the charge is expected to be retried later.
+   *
+   * @param paymentId the payment identifier
+   * @param ex the failure that triggered the fallback
+   * @return future completing with the payment in its current state
+   * @throws PaymentNotFoundException if the payment does not exist
+   */
+  public CompletableFuture<PaymentResponse> chargerFallback(String paymentId, Exception ex) {
+    log.warn("Charger fallback triggered for payment: {}. Error: {}", paymentId, ex.getMessage());
+    customMetrics.incrementChargeFailure();
+
+    // Return pending response (retry later)
+    Payment payment = paymentRepository.findByPaymentId(paymentId)
+        .orElseThrow(() -> new PaymentNotFoundException("Payment not found"));
+
+    return CompletableFuture.completedFuture(mapToResponse(payment));
+  }
+
+  /**
+   * Calls the external payment processor.
+   *
+   * <p>Simulated with a 90% success rate. Package-private so tests can stub the
+   * outcome deterministically.
+   *
+   * @param payment the payment to charge
+   * @return true if the charge succeeded
+   */
+  boolean callExternalProcessor(Payment payment) {
+    return Math.random() < 0.9;
   }
 
   /**
