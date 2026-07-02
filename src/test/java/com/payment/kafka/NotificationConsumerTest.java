@@ -12,9 +12,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for NotificationConsumer.
+ *
+ * @author orvigas@gmail.com
  */
 @ExtendWith(MockitoExtension.class)
 @Slf4j
@@ -78,5 +82,19 @@ public class NotificationConsumerTest {
       notificationConsumer.consumePaymentCharged(successEvent, null);
     });
     log.info("Test passed: NotificationConsumer handled null correlation ID");
+  }
+
+  @Test
+  void testConsumePaymentCharged_ProcessingErrorIsRethrown() {
+    // Rethrowing lets Kafka's error handling retry or dead-letter the record.
+    PaymentChargedEvent brokenEvent = mock(PaymentChargedEvent.class);
+    when(brokenEvent.getPaymentId()).thenReturn("pay_789");
+    when(brokenEvent.isSuccess()).thenThrow(new IllegalStateException("corrupted payload"));
+
+    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+      notificationConsumer.consumePaymentCharged(brokenEvent, null);
+    });
+    assertInstanceOf(IllegalStateException.class, thrown.getCause());
+    log.info("Test passed: NotificationConsumer rethrew processing error");
   }
 }

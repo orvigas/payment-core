@@ -5,6 +5,7 @@ import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import com.payment.errors.InvalidPaymentException;
 import com.payment.errors.PaymentNotFoundException;
+import com.payment.observability.CustomMetrics;
 import com.payment.repositories.PaymentRepository;
 import com.payment.kafka.PaymentProducer;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -38,6 +41,9 @@ public class PaymentServiceTest {
 
   @Mock
   private PaymentProducer paymentProducer;
+
+  @Mock
+  private CustomMetrics customMetrics;
 
   @InjectMocks
   private PaymentService paymentService;
@@ -288,4 +294,93 @@ public class PaymentServiceTest {
     assertEquals("user456", response.userId());
     assertEquals(new BigDecimal("2500.50"), response.amount());
   }
+
+  @Test
+  void testChargePaymentAsyncSuccess() throws ExecutionException, InterruptedException {
+    // Arrange - stub the simulated processor so the outcome is deterministic
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setStatus(PaymentStatus.PENDING);
+    payment.setAmount(new BigDecimal("1000.00"));
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+    when(paymentRepository.save(any())).thenReturn(payment);
+
+    PaymentService spyService = spy(paymentService);
+    doReturn(true).when(spyService).callExternalProcessor(any());
+
+    // Act
+    CompletableFuture<com.payment.contracts.PaymentResponse> result = spyService.chargePaymentAsync("pay_123");
+
+    // Assert - wait for completion
+    assertNotNull(result.get());
+    assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
+    verify(customMetrics, times(1)).startChargeProcessing();
+    verify(customMetrics, times(1)).incrementChargeSuccess();
+    verify(customMetrics, times(1)).recordChargeProcessing(any());
+  }
+
+  @Test
+  void testChargePaymentAsyncChargeFailure() {
+    // Arrange
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setStatus(PaymentStatus.PENDING);
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+
+    PaymentService spyService = spy(paymentService);
+    doReturn(false).when(spyService).callExternalProcessor(any());
+
+    // Act
+    CompletableFuture<com.payment.contracts.PaymentResponse> result = spyService.chargePaymentAsync("pay_123");
+
+    // Assert
+    ExecutionException ex = assertThrows(ExecutionException.class, () -> result.get());
+    assertInstanceOf(RuntimeException.class, ex.getCause());
+    verify(customMetrics, times(1)).incrementChargeFailure();
+    verify(customMetrics, times(1)).recordChargeProcessing(any());
+    verify(paymentRepository, never()).save(any());
+  }
+
+  @Test
+  void testChargePaymentAsyncNotFound() {
+    // Arrange
+    when(paymentRepository.findByPaymentId("invalid")).thenReturn(Optional.empty());
+
+    // Act & Assert
+    CompletableFuture<com.payment.contracts.PaymentResponse> result = paymentService.chargePaymentAsync("invalid");
+    assertThrows(ExecutionException.class, () -> result.get());
+  }
+
+  @Test
+  void testChargerFallbackReturnsCurrentPaymentState() throws ExecutionException, InterruptedException {
+    // Arrange
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setStatus(PaymentStatus.PENDING);
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+
+    // Act
+    CompletableFuture<com.payment.contracts.PaymentResponse> result =
+        paymentService.chargerFallback("pay_123", new RuntimeException("circuit breaker open"));
+
+    // Assert - payment is returned unchanged so the charge can be retried later
+    assertEquals("pay_123", result.get().paymentId());
+    assertEquals(PaymentStatus.PENDING, result.get().status());
+    verify(customMetrics, times(1)).incrementChargeFailure();
+  }
+
+  @Test
+  void testChargerFallbackPaymentNotFound() {
+    // Arrange
+    when(paymentRepository.findByPaymentId("invalid")).thenReturn(Optional.empty());
+
+    // Act & Assert
+    assertThrows(PaymentNotFoundException.class, () -> {
+      paymentService.chargerFallback("invalid", new RuntimeException("circuit breaker open"));
+    });
+  }
+
 }
