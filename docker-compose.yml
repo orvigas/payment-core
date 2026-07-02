@@ -1,5 +1,4 @@
 services:
-  # PostgreSQL
   postgres:
     image: postgres:15-alpine
     container_name: payment-db
@@ -12,21 +11,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - payment-network
 
-  # Zookeeper (required by Kafka)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: payment-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_SYNC_LIMIT: 2
-      ZOOKEEPER_INIT_LIMIT: 5
     ports:
       - "2181:2181"
     networks:
@@ -37,7 +33,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: payment-kafka
@@ -49,8 +44,6 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_LOG_RETENTION_MS: 3600000
     ports:
       - "9092:9092"
     networks:
@@ -61,7 +54,49 @@ services:
       timeout: 10s
       retries: 5
 
-  # Payment Core Application
+  # NEW: Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: payment-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # NEW: Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: payment-jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"  # Jaeger UI
+      - "14250:14250"
+      - "14268:14268"
+      - "14269:14269"
+      - "9411:9411"
+    networks:
+      - payment-network
+    healthcheck:
+      # The Jaeger image ships wget but not curl.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:14269"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   payment-core:
     build:
       context: .
@@ -72,19 +107,25 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_ZIPKIN_BASE_URL: http://jaeger:9411
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
     ports:
       - "8080:8080"
-      - "5005:5005"
+      - "5005:5005"  # Debug port
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
     networks:
       - payment-network
     healthcheck:
-      # Busybox wget: the alpine runtime image has no curl.
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health" ]
+      # The alpine runtime image ships wget but not curl.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -95,3 +136,4 @@ networks:
 
 volumes:
   postgres_data:
+  prometheus_data:
