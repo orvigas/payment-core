@@ -1,0 +1,8 @@
+# Track K6 metrics in Prometheus
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "k6"
+    static_configs:
+      - targets: ["localhost:6565"] # K6 Prometheus endpoint
