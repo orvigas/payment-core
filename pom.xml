@@ -75,6 +75,17 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Flyway (schema migrations, applied from src/main/resources/db/migration) -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+
     <!-- Lombok (reduce boilerplate) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
