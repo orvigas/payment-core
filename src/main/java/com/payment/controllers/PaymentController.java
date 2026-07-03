@@ -15,6 +15,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 /**
  * REST Controller for payment operations.
  *
