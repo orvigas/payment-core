@@ -51,6 +51,114 @@ collection:
         send: true
         store: true
       rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/auth/login"
+    name: Login - Success
+    meta:
+      id: req_login_success
+      created: 1719829200012
+      modified: 1719829200012
+      isPrivate: false
+      description: "Authenticate with valid credentials and obtain JWT access/refresh tokens"
+      sortKey: -1719829200002.1
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "username": "load_test_user",
+          "password": "LoadTest123!"
+        }
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/auth/login"
+    name: Login - Invalid Credentials
+    meta:
+      id: req_login_invalid
+      created: 1719829200013
+      modified: 1719829200013
+      isPrivate: false
+      description: "Test 401 response for a wrong password"
+      sortKey: -1719829200002.2
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "username": "load_test_user",
+          "password": "wrong-password"
+        }
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/auth/refresh"
+    name: Refresh Token - Success
+    meta:
+      id: req_refresh_success
+      created: 1719829200014
+      modified: 1719829200014
+      isPrivate: false
+      description: "Exchange a valid refresh token for a new access token"
+      sortKey: -1719829200002.3
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: Authorization
+        value: "Bearer {{ _.refresh_token }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.base_url }}/api/v1/auth/refresh"
+    name: Refresh Token - Invalid Token
+    meta:
+      id: req_refresh_invalid
+      created: 1719829200015
+      modified: 1719829200015
+      isPrivate: false
+      description: "Test 401 response for an invalid or expired refresh token"
+      sortKey: -1719829200002.4
+    method: POST
+    body: {}
+    parameters: []
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: Authorization
+        value: "Bearer invalid-token"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
   - url: "{{ _.base_url }}/api/v1/payments"
     name: Create Payment - Success
     meta:
@@ -299,3 +407,5 @@ environments:
   data:
     base_url: "http://localhost:8080"
     payment_id: ""
+    access_token: ""
+    refresh_token: ""
