@@ -17,6 +17,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 
+/**
+ * Extracts JWT tokens from Authorization headers and populates the security context.
+ * Runs once per HTTP request to validate and apply token-based authentication.
+ *
+ * @author orvigas@gmail.com
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -26,6 +32,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
   private static final String AUTHORIZATION_HEADER = "Authorization";
 
+  /**
+   * Processes a single HTTP request to extract and validate JWT authentication.
+   */
   @Override
   protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
       @NonNull FilterChain filterChain)
@@ -59,7 +68,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Extract JWT token from Authorization header
+   * Extracts the JWT token from the Authorization header.
+   * Expects format: "Bearer &lt;token&gt;"
+   *
+   * @param request the HTTP request
+   * @return the JWT token or null if not present or incorrectly formatted
    */
   private String getJwtFromRequest(HttpServletRequest request) {
     String bearerToken = request.getHeader(AUTHORIZATION_HEADER);

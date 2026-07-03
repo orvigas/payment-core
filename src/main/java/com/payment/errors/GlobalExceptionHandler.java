@@ -47,6 +47,23 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles RateLimitExceededException.
+   *
+   * @param ex the rate limit exceeded exception
+   * @return ResponseEntity with HTTP 429 (Too Many Requests) status and error details
+   */
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(RateLimitExceededException ex) {
+    log.warn("Rate limit exceeded: {}", ex.getMessage());
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 429);
+    body.put("error", "Too Many Requests");
+    body.put("message", ex.getMessage());
+    return new ResponseEntity<>(body, HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  /**
    * Handles all unhandled exceptions.
    *
    * @param ex the exception

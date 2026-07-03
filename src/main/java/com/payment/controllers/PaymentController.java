@@ -2,6 +2,7 @@ package com.payment.controllers;
 
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.contracts.PaymentResponse;
+import com.payment.errors.RateLimitExceededException;
 import com.payment.services.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,15 +14,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
-import org.springframework.web.bind.annotation.RequestBody;
-
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * REST Controller for payment operations.
  *
- * <p>Provides endpoints for creating, retrieving, confirming, and refunding payments. All
+ * <p>
+ * Provides endpoints for creating, retrieving, confirming, and refunding
+ * payments. All
  * endpoints are versioned under /api/v1 and operate on Payment resources.
  *
  * @author Orlando Villegas (orvigas@gmail.com)
@@ -39,14 +39,15 @@ public class PaymentController {
   /**
    * Creates a new payment.
    *
-   * @param request the payment creation request containing user, amount, currency, merchant, and
-   *     description
-   * @return ResponseEntity with HTTP 201 (Created) status and the created payment response
+   * @param request the payment creation request containing user, amount,
+   *                currency, merchant, and
+   *                description
+   * @return ResponseEntity with HTTP 201 (Created) status and the created payment
+   *         response
    */
   @PostMapping
-  @Operation(
-      summary = "Create a new payment",
-      description = "Initiates a new payment transaction with the provided details. The payment is created in PENDING status and will be processed asynchronously.")
+  @Operation(summary = "Create a new payment", description = "Initiates a new payment transaction with the provided details. The payment is created in PENDING status and will be processed asynchronously.")
+  @RateLimiter(name = "payment-creation", fallbackMethod = "createPaymentFallback")
   @ApiResponse(responseCode = "201", description = "Payment created successfully")
   @ApiResponse(responseCode = "400", description = "Invalid request payload (validation error)")
   @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -63,9 +64,7 @@ public class PaymentController {
    * @return ResponseEntity with HTTP 200 (OK) status and the payment details
    */
   @GetMapping("/{paymentId}")
-  @Operation(
-      summary = "Retrieve a payment",
-      description = "Fetches the details of a specific payment transaction by its unique identifier.")
+  @Operation(summary = "Retrieve a payment", description = "Fetches the details of a specific payment transaction by its unique identifier.")
   @ApiResponse(responseCode = "200", description = "Payment retrieved successfully")
   @ApiResponse(responseCode = "404", description = "Payment not found")
   @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -80,12 +79,11 @@ public class PaymentController {
    * Confirms a pending payment.
    *
    * @param paymentId the unique identifier of the payment to confirm
-   * @return ResponseEntity with HTTP 200 (OK) status and the updated payment details
+   * @return ResponseEntity with HTTP 200 (OK) status and the updated payment
+   *         details
    */
   @PostMapping("/{paymentId}/confirm")
-  @Operation(
-      summary = "Confirm a payment",
-      description = "Transitions a PENDING payment to PROCESSING status. The payment will then be charged and processed asynchronously.")
+  @Operation(summary = "Confirm a payment", description = "Transitions a PENDING payment to PROCESSING status. The payment will then be charged and processed asynchronously.")
   @ApiResponse(responseCode = "200", description = "Payment confirmed successfully")
   @ApiResponse(responseCode = "404", description = "Payment not found")
   @ApiResponse(responseCode = "400", description = "Payment cannot be confirmed (invalid status)")
@@ -101,12 +99,11 @@ public class PaymentController {
    * Refunds a confirmed payment.
    *
    * @param paymentId the unique identifier of the payment to refund
-   * @return ResponseEntity with HTTP 200 (OK) status and the updated payment details
+   * @return ResponseEntity with HTTP 200 (OK) status and the updated payment
+   *         details
    */
   @PostMapping("/{paymentId}/refund")
-  @Operation(
-      summary = "Refund a payment",
-      description = "Initiates a refund for a COMPLETED payment. The refund will be processed asynchronously and the payment status will transition to REFUNDED.")
+  @Operation(summary = "Refund a payment", description = "Initiates a refund for a COMPLETED payment. The refund will be processed asynchronously and the payment status will transition to REFUNDED.")
   @ApiResponse(responseCode = "200", description = "Refund initiated successfully")
   @ApiResponse(responseCode = "404", description = "Payment not found")
   @ApiResponse(responseCode = "400", description = "Payment cannot be refunded (invalid status)")
@@ -116,5 +113,18 @@ public class PaymentController {
     log.info("POST /api/v1/payments/{}/refund - Refunding payment", paymentId);
     PaymentResponse response = paymentService.refundPayment(paymentId);
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Fallback for createPayment when rate limit is exceeded.
+   *
+   * @param request the payment creation request
+   * @param ex the rate limit exception
+   * @throws RateLimitExceededException when the rate limit is exceeded
+   */
+  public ResponseEntity<PaymentResponse> createPaymentFallback(
+      CreatePaymentRequest request, Exception ex) {
+    log.warn("Payment creation rate limit exceeded");
+    throw new RateLimitExceededException("Payment creation rate limit exceeded. Please try again later.");
   }
 }

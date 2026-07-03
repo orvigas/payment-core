@@ -12,6 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Manages user authentication and JWT token lifecycle.
+ * Provides login and token refresh endpoints.
+ *
+ * @author orvigas@gmail.com
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -21,6 +27,12 @@ public class AuthController {
 
     private final JwtTokenProvider tokenProvider;
 
+    /**
+     * Authenticates a user and issues JWT access and refresh tokens.
+     *
+     * @param request login request containing userId
+     * @return LoginResponse with access and refresh tokens
+     */
     @PostMapping("/login")
     @Operation(summary = "Login and get JWT token")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -43,6 +55,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    /**
+     * Refreshes an access token using a valid refresh token.
+     *
+     * @param authHeader the Authorization header containing "Bearer &lt;refresh-token&gt;"
+     * @return LoginResponse with a new access token, or 401 Unauthorized if refresh token is invalid
+     */
     @PostMapping("/refresh")
     @Operation(summary = "Refresh access token")
     public ResponseEntity<LoginResponse> refreshToken(

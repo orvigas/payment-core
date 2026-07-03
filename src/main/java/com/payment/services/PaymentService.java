@@ -22,7 +22,6 @@ import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import io.micrometer.core.instrument.Timer;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -189,8 +188,10 @@ public class PaymentService {
   /**
    * Charges a payment asynchronously through the external processor.
    *
-   * <p>Guarded by a circuit breaker, retry, and time limiter. When the circuit
-   * opens or all retries are exhausted, {@link #chargerFallback(String, Exception)}
+   * <p>
+   * Guarded by a circuit breaker, retry, and time limiter. When the circuit
+   * opens or all retries are exhausted,
+   * {@link #chargerFallback(String, Exception)}
    * returns the payment in its current state so the charge can be retried later.
    *
    * @param paymentId the payment identifier
@@ -234,11 +235,12 @@ public class PaymentService {
    * Fallback for {@link #chargePaymentAsync(String)} when the circuit breaker is
    * open or the charge attempt fails.
    *
-   * <p>Returns the payment in its current state instead of failing the request;
+   * <p>
+   * Returns the payment in its current state instead of failing the request;
    * the charge is expected to be retried later.
    *
    * @param paymentId the payment identifier
-   * @param ex the failure that triggered the fallback
+   * @param ex        the failure that triggered the fallback
    * @return future completing with the payment in its current state
    * @throws PaymentNotFoundException if the payment does not exist
    */
@@ -256,7 +258,8 @@ public class PaymentService {
   /**
    * Calls the external payment processor.
    *
-   * <p>Simulated with a 90% success rate. Package-private so tests can stub the
+   * <p>
+   * Simulated with a 90% success rate. Package-private so tests can stub the
    * outcome deterministically.
    *
    * @param payment the payment to charge

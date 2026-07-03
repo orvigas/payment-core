@@ -2,7 +2,6 @@ package com.payment.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +13,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Handles JWT issuance and validation for authenticated requests.
+ *
+ * @author orvigas@gmail.com
+ */
 @Component
 @Slf4j
 public class JwtTokenProvider {
@@ -25,7 +29,10 @@ public class JwtTokenProvider {
   private long jwtExpirationMs;
 
   /**
-   * Generate JWT token for authenticated user
+   * Generates an access token for the given user.
+   *
+   * @param userId the authenticated user's ID
+   * @return signed JWT token
    */
   public String generateToken(String userId) {
     log.debug("Generating JWT token for userId: {}", userId);
@@ -38,7 +45,10 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Generate refresh token (longer expiration)
+   * Generates a refresh token with extended expiration for the given user.
+   *
+   * @param userId the authenticated user's ID
+   * @return signed JWT refresh token (7x longer expiration than access token)
    */
   public String generateRefreshToken(String userId) {
     log.debug("Generating refresh token for userId: {}", userId);
@@ -51,13 +61,17 @@ public class JwtTokenProvider {
         .claims(claims)
         .subject(userId)
         .issuedAt(new Date())
-        .expiration(new Date(System.currentTimeMillis() + (jwtExpirationMs * 7))) // 7x longer
+        .expiration(new Date(System.currentTimeMillis() + (jwtExpirationMs * 7)))
         .signWith(getSigningKey(), Jwts.SIG.HS256)
         .compact();
   }
 
   /**
-   * Create JWT token with claims
+   * Creates a JWT token with the provided claims.
+   *
+   * @param claims token claims (including userId, type)
+   * @param subject the token subject (typically userId)
+   * @return signed JWT token
    */
   private String createToken(Map<String, Object> claims, String subject) {
     return Jwts.builder()
@@ -70,14 +84,17 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Validate JWT token and extract userId
+   * Extracts the user ID from a signed JWT token.
+   *
+   * @param token the JWT token string
+   * @return the user ID (subject), or null if token is invalid or parsing fails
    */
   public String getUserIdFromToken(String token) {
     try {
       Claims claims = Jwts.parser()
           .verifyWith(getSigningKey())
           .build()
-          .parseEncryptedClaims(token)
+          .parseSignedClaims(token)
           .getPayload();
 
       return claims.getSubject();
@@ -88,14 +105,17 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Validate token signature and expiration
+   * Validates a JWT token's signature and expiration.
+   *
+   * @param token the JWT token string
+   * @return true if the token is valid, false otherwise
    */
   public boolean isTokenValid(String token) {
     try {
       Jwts.parser()
           .verifyWith(getSigningKey())
           .build()
-          .parseEncryptedClaims(token);
+          .parseSignedClaims(token);
       return true;
     } catch (Exception e) {
       log.warn("Invalid token: {}", e.getMessage());
@@ -104,32 +124,38 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Check if token is expired
+   * Checks if a JWT token has expired.
+   *
+   * @param token the JWT token string
+   * @return true if the token is expired or cannot be parsed, false if valid and not expired
    */
   public boolean isTokenExpired(String token) {
     try {
       Claims claims = Jwts.parser()
           .verifyWith(getSigningKey())
           .build()
-          .parseEncryptedClaims(token)
+          .parseSignedClaims(token)
           .getPayload();
 
       return claims.getExpiration().before(new Date());
     } catch (Exception e) {
       log.warn("Error checking token expiration: {}", e.getMessage());
-      return true; // Treat as expired if error
+      return true;
     }
   }
 
   /**
-   * Extract claims from token
+   * Extracts all claims from a JWT token.
+   *
+   * @param token the JWT token string
+   * @return token claims, or null if parsing fails
    */
   public Claims getClaimsFromToken(String token) {
     try {
       return Jwts.parser()
           .verifyWith(getSigningKey())
           .build()
-          .parseEncryptedClaims(token)
+          .parseSignedClaims(token)
           .getPayload();
     } catch (Exception e) {
       log.warn("Failed to get claims from token: {}", e.getMessage());
@@ -138,7 +164,10 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Get signing key (must be at least 256 bits for HS256)
+   * Derives the HMAC signing key from the configured secret.
+   * The secret must be at least 256 bits (32 bytes) for HS256.
+   *
+   * @return the derived SecretKey for HMAC-SHA256 signing
    */
   private SecretKey getSigningKey() {
     byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);

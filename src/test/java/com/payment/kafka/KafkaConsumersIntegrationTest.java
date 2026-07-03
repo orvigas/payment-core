@@ -27,9 +27,6 @@ import static org.mockito.Mockito.*;
  *
  * @author orvigas@gmail.com
  */
-// Mockito matchers return null placeholders, which Eclipse's null analysis
-// flags against Spring Data's @NonNull repository API.
-@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @Slf4j
 public class KafkaConsumersIntegrationTest {

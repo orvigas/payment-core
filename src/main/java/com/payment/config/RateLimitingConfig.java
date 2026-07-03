@@ -9,17 +9,32 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 
+/**
+ * Configures Resilience4j rate limiters for payment and authentication endpoints.
+ * Provides protection against brute-force attacks and resource exhaustion.
+ *
+ * @author orvigas@gmail.com
+ */
 @Configuration
 @Slf4j
 public class RateLimitingConfig {
 
+    /**
+     * Provides the Resilience4j RateLimiterRegistry for managing rate limiters.
+     *
+     * @return RateLimiterRegistry with default configuration
+     */
     @Bean
     public RateLimiterRegistry rateLimiterRegistry() {
         return RateLimiterRegistry.ofDefaults();
     }
 
     /**
-     * Rate limiter for payment creation: 100 requests per hour per user
+     * Configures rate limiter for payment creation endpoints.
+     * Allows 100 requests per hour per user to prevent API abuse.
+     *
+     * @param registry the RateLimiterRegistry
+     * @return RateLimiter for payment creation
      */
     @Bean
     public RateLimiter paymentCreationRateLimiter(RateLimiterRegistry registry) {
@@ -33,7 +48,11 @@ public class RateLimitingConfig {
     }
 
     /**
-     * Rate limiter for login: 10 attempts per minute
+     * Configures rate limiter for login attempts.
+     * Allows 10 login attempts per minute to prevent brute-force attacks.
+     *
+     * @param registry the RateLimiterRegistry
+     * @return RateLimiter for login endpoints
      */
     @Bean
     public RateLimiter loginRateLimiter(RateLimiterRegistry registry) {

@@ -19,6 +19,12 @@ import java.util.Arrays;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+/**
+ * Configures Spring Security with stateless JWT-based authentication.
+ * Enables CORS, disables session creation, and applies JWT filter for token validation.
+ *
+ * @author orvigas@gmail.com
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -26,6 +32,13 @@ public class SecurityConfig {
 
   private final JwtTokenProvider tokenProvider;
 
+  /**
+   * Builds the HTTP security filter chain with JWT authentication and CORS support.
+   *
+   * @param http the HttpSecurity builder
+   * @return configured SecurityFilterChain
+   * @throws Exception if security configuration fails
+   */
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
@@ -56,6 +69,12 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Provides CORS configuration for cross-origin requests.
+   * Allows requests from localhost development environments.
+   *
+   * @return CorsConfigurationSource configured for payment service
+   */
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();

@@ -1,7 +1,6 @@
 package com.payment.controllers;
 
 import com.payment.contracts.LoginRequest;
-import com.payment.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,30 +18,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class AuthControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
-    @Autowired
-    private JwtTokenProvider tokenProvider;
+  @Test
+  void testLoginSuccess() throws Exception {
+    LoginRequest request = new LoginRequest("test_user");
 
-    @Test
-    void testLoginSuccess() throws Exception {
-        LoginRequest request = new LoginRequest("test_user");
+    mockMvc.perform(post("/api/v1/auth/login")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(asJsonString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken", notNullValue()))
+        .andExpect(jsonPath("$.tokenType", equalTo("Bearer")))
+        .andExpect(jsonPath("$.expiresIn", equalTo(3600)));
+  }
 
-        mockMvc.perform(post("/api/v1/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(asJsonString(request)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.accessToken", notNullValue()))
-            .andExpect(jsonPath("$.tokenType", equalTo("Bearer")))
-            .andExpect(jsonPath("$.expiresIn", equalTo(3600)));
+  private String asJsonString(Object obj) {
+    try {
+      return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
-
-    private String asJsonString(Object obj) {
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+  }
 }

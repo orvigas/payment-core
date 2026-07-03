@@ -27,9 +27,6 @@ import static org.mockito.Mockito.*;
  *
  * @author orvigas@gmail.com
  */
-// Mockito matchers return null placeholders, which Eclipse's null analysis
-// flags against Spring Data's @NonNull repository API.
-@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 public class PaymentServiceTest {
 
@@ -57,8 +54,7 @@ public class PaymentServiceTest {
         new BigDecimal("5000.00"),
         "MXN",
         "jersey-mikes",
-        null
-    );
+        null);
   }
 
   @Test
@@ -234,8 +230,7 @@ public class PaymentServiceTest {
         new BigDecimal("-100.00"),
         "USD",
         "merchant",
-        null
-    );
+        null);
 
     doThrow(new InvalidPaymentException("Amount must be positive"))
         .when(paymentValidator).validateCreatePaymentRequest(any());
@@ -274,8 +269,7 @@ public class PaymentServiceTest {
         new BigDecimal("2500.50"),
         "EUR",
         "new-merchant",
-        "Purchase order #1234"
-    );
+        "Purchase order #1234");
 
     Payment savedPayment = new Payment();
     savedPayment.setPaymentId("pay_456");
@@ -363,8 +357,8 @@ public class PaymentServiceTest {
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act
-    CompletableFuture<com.payment.contracts.PaymentResponse> result =
-        paymentService.chargerFallback("pay_123", new RuntimeException("circuit breaker open"));
+    CompletableFuture<com.payment.contracts.PaymentResponse> result = paymentService.chargerFallback("pay_123",
+        new RuntimeException("circuit breaker open"));
 
     // Assert - payment is returned unchanged so the charge can be retried later
     assertEquals("pay_123", result.get().paymentId());

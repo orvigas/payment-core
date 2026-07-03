@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.payment.events.PaymentInitiatedEvent;
@@ -26,9 +25,6 @@ class KafkaConfigTest {
 
   @Autowired
   private ConsumerFactory<String, PaymentInitiatedEvent> paymentInitiatedConsumerFactory;
-
-  @Autowired(required = false)
-  private ConcurrentMessageListenerContainer<?, ?> listenerContainer;
 
   @Test
   void testProducerFactoryConfiguration() {
