@@ -6,14 +6,18 @@ import jakarta.validation.constraints.NotBlank;
 /**
  * Immutable data contract for user login.
  *
- * <p>This record encapsulates the required information to authenticate a user. The userId field is
- * validated upon construction using Jakarta Bean Validation.
+ * <p>Both fields are validated on construction using Jakarta Bean Validation.
  *
- * @param userId unique identifier of the user attempting to login (required, non-blank)
+ * @param username login username (required, non-blank)
+ * @param password plaintext password, checked against the stored hash (required, non-blank)
  * @author orvigas@gmail.com
  */
 public record LoginRequest(
-    @Schema(description = "User ID", example = "user_123")
-    @NotBlank(message = "userId is required")
-    String userId
+    @Schema(description = "Username", example = "jdoe")
+    @NotBlank(message = "username is required")
+    String username,
+
+    @Schema(description = "Password")
+    @NotBlank(message = "password is required")
+    String password
 ) {}

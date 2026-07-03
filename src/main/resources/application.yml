@@ -6,6 +6,21 @@ app:
     # Token validity duration in milliseconds
     expiration: ${JWT_EXPIRATION:3600000}
 
+  database:
+    # Rebuilds the schema from scratch on every startup: Flyway drops all objects (clean) and
+    # then reapplies every migration in db/migration, so local runs never drift from what's
+    # checked in and stale dev data can't mask a broken migration.
+    #
+    # To keep data between restarts (e.g. you're seeding fixtures manually, or iterating on a
+    # new migration without losing everything each time), set this to false — Flyway will then
+    # only apply migrations that haven't run yet and leave existing rows untouched. Override with
+    # the DB_RESET_ON_STARTUP environment variable rather than editing this file.
+    #
+    # This must stay true only for local/dev use. spring.flyway.clean-disabled below is the actual
+    # safety net against wiping a real database - if you point this config at anything other than
+    # a disposable local Postgres, set clean-disabled back to true first.
+    reset-on-startup: ${DB_RESET_ON_STARTUP:true}
+
 spring:
   # Application name used for identification and service discovery
   application:
@@ -20,22 +35,38 @@ spring:
     password: postgres
     # JDBC driver for PostgreSQL
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20 # Max connections (increase from default 10)
+      minimum-idle: 5 # Min idle connections
+      idle-timeout: 600000 # 10 minutes
+      connection-timeout: 20000 # 20 seconds
+      max-lifetime: 1800000 # 30 minutes
+      auto-commit: true
+      data-source-properties:
+        cachePreparedStatements: true
+        preparedStatementCacheSize: 250
+        preparedStatementCacheSqlLimit: 2048
 
-  # Database initialization configuration
-  sql:
-    init:
-      # Initialize database on every application startup
-      mode: always
-      # Fail fast on initialization errors instead of silently continuing
-      continue-on-error: false
+  # Flyway schema migrations - source of truth for the database schema, replacing
+  # Hibernate's auto-DDL. Scripts live in src/main/resources/db/migration.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Lets Flyway adopt a database that already has objects in it (e.g. one created by an
+    # older ddl-auto run) instead of failing because the schema history table is missing.
+    baseline-on-migrate: true
+    # Spring Boot disables Flyway's clean command by default as a safety guard. It has to be
+    # re-enabled here for app.database.reset-on-startup (see above) to actually be able to
+    # wipe the schema; flip this back to true if this config ever points at a database that
+    # isn't a disposable local instance.
+    clean-disabled: false
 
   # JPA and Hibernate configuration
   jpa:
-    # Defer datasource initialization until after JPA is configured
-    defer-datasource-initialization: true
     hibernate:
-      # Drop and recreate schema on startup for development (not for production)
-      ddl-auto: create-drop
+      # Schema is owned by Flyway migrations now; Hibernate only checks that entity mappings
+      # match what Flyway created and fails fast on drift instead of silently altering tables.
+      ddl-auto: validate
     # Disable SQL logging to reduce noise in development
     show-sql: false
     properties:

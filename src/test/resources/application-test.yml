@@ -5,6 +5,11 @@ spring:
     username: sa
     password:
 
+  # Migrations under db/migration are Postgres-only (BIGSERIAL, INET, JSONB); skip them here
+  # and let Hibernate generate the schema straight from the entities against H2 instead.
+  flyway:
+    enabled: false
+
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:

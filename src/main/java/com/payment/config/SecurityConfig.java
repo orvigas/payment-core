@@ -6,9 +6,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -21,7 +25,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * Configures Spring Security with stateless JWT-based authentication.
- * Enables CORS, disables session creation, and applies JWT filter for token validation.
+ * Enables CORS, disables session creation, and applies JWT filter for token
+ * validation.
  *
  * @author orvigas@gmail.com
  */
@@ -32,8 +37,28 @@ public class SecurityConfig {
 
   private final JwtTokenProvider tokenProvider;
 
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
   /**
-   * Builds the HTTP security filter chain with JWT authentication and CORS support.
+   * Exposes the AuthenticationManager Spring Boot assembles from the {@code UserDetailsService}
+   * and {@code PasswordEncoder} beans, so AuthController can authenticate login requests through
+   * the standard Spring Security flow instead of checking password hashes itself.
+   *
+   * @param config the Spring-managed authentication configuration
+   * @return the application's AuthenticationManager
+   * @throws Exception if the manager cannot be built
+   */
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    return config.getAuthenticationManager();
+  }
+
+  /**
+   * Builds the HTTP security filter chain with JWT authentication and CORS
+   * support.
    *
    * @param http the HttpSecurity builder
    * @return configured SecurityFilterChain
