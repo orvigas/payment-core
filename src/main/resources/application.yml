@@ -1,110 +1,194 @@
+# Application JWT Configuration
+app:
+  jwt:
+    # Signing key for JWT tokens; must be at least 32 characters for HS256 algorithm
+    secret: ${JWT_SECRET:your-super-secret-key-change-in-production-at-least-32-characters-long-for-hs256}
+    # Token validity duration in milliseconds
+    expiration: ${JWT_EXPIRATION:3600000}
+
 spring:
+  # Application name used for identification and service discovery
   application:
     name: payment-core
 
+  # PostgreSQL database connection configuration
   datasource:
+    # Connection URL for the PostgreSQL database
     url: jdbc:postgresql://localhost:5432/payment_db
+    # Database user credentials
     username: postgres
     password: postgres
+    # JDBC driver for PostgreSQL
     driver-class-name: org.postgresql.Driver
 
+  # Database initialization configuration
   sql:
     init:
+      # Initialize database on every application startup
       mode: always
+      # Fail fast on initialization errors instead of silently continuing
       continue-on-error: false
 
+  # JPA and Hibernate configuration
   jpa:
+    # Defer datasource initialization until after JPA is configured
     defer-datasource-initialization: true
     hibernate:
+      # Drop and recreate schema on startup for development (not for production)
       ddl-auto: create-drop
+    # Disable SQL logging to reduce noise in development
     show-sql: false
     properties:
       hibernate:
+        # Use PostgreSQL dialect for optimal SQL generation
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Format SQL output for better readability in logs
         "[format_sql]": true
         jdbc:
+          # Batch multiple inserts to reduce database round-trips
           "[batch_size]": 20
+        # Preserve the order of inserts to prevent foreign key constraint violations
         "[order_inserts]": true
+        # Preserve the order of updates to maintain data consistency
         "[order_updates]": true
 
+  # Security configuration for Spring Security filters
+  security:
+    filter:
+      # Set JWT filter priority before other security filters
+      order: 5
+
+# Server configuration
 server:
+  # HTTP port for the application
   port: 8080
   servlet:
+    # Root context path for all endpoints
     context-path: /
 
+# Actuator and monitoring configuration
 management:
   endpoints:
     web:
+      # Base path for all actuator endpoints
       base-path: /actuator
       exposure:
+        # Expose only essential endpoints for health checks and metrics
         include: health,metrics,prometheus,info
   endpoint:
     health:
+      # Show detailed health information only to authorized users
       show-details: when-authorized
       probes:
+        # Enable Kubernetes-style liveness and readiness probes
         enabled: true
   health:
+    # Enable liveness probe to indicate if application is running
     livenessstate:
       enabled: true
+    # Enable readiness probe to indicate if application can handle requests
     readinessstate:
       enabled: true
   tracing:
     sampling:
+      # Capture 100% of traces for development; reduce in production
       probability: 1.0
-  # Zipkin Exporter (Jaeger)
+  # Send traces to Jaeger via Zipkin protocol
   zipkin:
     tracing:
+      # Jaeger collector endpoint for receiving traces
       endpoint: http://localhost:9411/api/v2/spans
 
+# OpenAPI and Swagger UI configuration
 springdoc:
   api-docs:
+    # OpenAPI specification endpoint
     path: /v3/api-docs
     enabled: true
   swagger-ui:
+    # Swagger UI interface endpoint
     path: /swagger-ui.html
     enabled: true
+    # Sort API operations by HTTP method
     operations-sorter: method
+    # Sort API tags alphabetically
     tags-sorter: alpha
+    # Access Swagger UI from root path
     use-root-path: true
+    # Primary API name in Swagger UI
     urls-primary-name: payment-core
+    # Hide operation IDs from UI for cleaner display
     display-operation-id: false
+    # Enable deep linking to specific operations
     deep-linking: true
+    # Hide vendor extensions from UI
     show-extensions: false
+    # Enable try-it-out feature for testing endpoints
     try-it-out-enabled: true
+    # Disable request filtering in UI
     filter: false
+    # Use standalone layout for Swagger UI
     layout: StandaloneLayout
+  # Hide actuator endpoints from API documentation
   show-actuator: false
+  # Use fully qualified names for model classes in documentation
   use-fqn: true
 
-# Resilience4j Configuration
+# Resilience4j fault tolerance patterns
 resilience4j:
   circuitbreaker:
     configs:
       default:
+        # Open circuit if failure rate exceeds 50% of calls
         failureRateThreshold: 50
+        # Open circuit if slow calls exceed 50% of total calls
         slowCallRateThreshold: 50
+        # Requests taking longer than 2s are considered slow
         slowCallDurationThreshold: 2s
+        # Wait 30 seconds before attempting recovery
         waitDurationInOpenState: 30s
+        # Allow 3 test calls in half-open state before deciding to close or re-open
         permittedNumberOfCallsInHalfOpenState: 3
+        # Automatically transition from open to half-open without manual intervention
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
+  # Automatic retry configuration for transient failures
   retry:
     configs:
       default:
+        # Retry failed calls up to 3 times
         maxAttempts: 3
+        # Wait 100ms before retrying
         waitDuration: 100ms
 
+  # Call timeout protection
   timelimiter:
     configs:
       default:
+        # Force timeout after 5 seconds to prevent hanging requests
         timeoutDuration: 5s
 
-# Logging
+  # Rate limiting configuration
+  ratelimiter:
+    configs:
+      default:
+        # Reset rate limit quota every 1 hour
+        limit-refresh-period: 1h
+        # Allow maximum 100 calls per hour per instance
+        limit-for-period: 100
+        # Wait up to 1 second for available rate limit slots
+        timeout-duration: 1s
+
+# Logging configuration
 logging:
   level:
+    # Default log level for all packages
     root: INFO
+    # Verbose logging for payment module for debugging
     "[com.payment]": DEBUG
   pattern:
+    # Log format with timestamp and message
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
   file:
+    # File path for persisting logs
     name: logs/payment-core.log
