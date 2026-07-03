@@ -54,6 +54,25 @@ k6 version
 
 ## Running Tests
 
+### Seed the Load Test User
+
+`payment-load-test.js` logs in with real credentials, and there's no registration endpoint, so
+the account has to exist in the database before the first run.
+
+If you're running the stack via `docker-compose up`, this is automatic: the `db-seed` service
+reruns `seed-load-test-user.sql` after every startup, since `app.database.reset-on-startup`
+(the default) has Flyway wipe the `users` table on every app boot.
+
+If you're running the app some other way (e.g. `mvn spring-boot:run` against a local Postgres),
+seed it manually:
+
+```bash
+psql -h localhost -U postgres -d payment_db -f seed-load-test-user.sql
+```
+
+Override `LOAD_TEST_USERNAME`/`LOAD_TEST_PASSWORD` when invoking k6 if you seed different
+credentials.
+
 ### Basic Usage
 
 ```bash

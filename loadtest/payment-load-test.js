@@ -3,6 +3,11 @@ import { check, group } from 'k6';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
+// Must match a row already seeded via loadtest/seed-load-test-user.sql - login
+// now checks real credentials, so there's no implicit user creation anymore.
+const LOAD_TEST_USERNAME = __ENV.LOAD_TEST_USERNAME || 'load_test_user';
+const LOAD_TEST_PASSWORD = __ENV.LOAD_TEST_PASSWORD || 'LoadTest123!';
+
 export const options = {
   stages: [
     { duration: '1m', target: 10 },
@@ -12,19 +17,22 @@ export const options = {
   ],
 };
 
-let accessToken;
-
 export function setup() {
   // Get token once before test runs
   const loginRes = http.post(
     `${BASE_URL}/api/v1/auth/login`,
-    JSON.stringify({ userId: `load_test_user` }),
+    JSON.stringify({ username: LOAD_TEST_USERNAME, password: LOAD_TEST_PASSWORD }),
     { headers: { 'Content-Type': 'application/json' } }
   );
 
-  const data = JSON.parse(loginRes.body);
-  accessToken = data.accessToken;
+  if (loginRes.status !== 200) {
+    throw new Error(
+      `Login failed with status ${loginRes.status}: ${loginRes.body}. ` +
+      'Run loadtest/seed-load-test-user.sql against the target database first.'
+    );
+  }
 
+  const accessToken = JSON.parse(loginRes.body).accessToken;
   console.log('Setup: Got access token');
   return { token: accessToken };
 }
