@@ -168,4 +168,106 @@ class GlobalExceptionHandlerTest {
 
     assertEquals(500, response.getStatusCode().value());
   }
+
+  @Test
+  void testHandleInvalidCredentials() {
+    InvalidCredentialsException exception = new InvalidCredentialsException("Invalid username or password");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidCredentials(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    assertNotNull(body);
+    assertEquals(401, body.get("status"));
+    assertEquals("Unauthorized", body.get("error"));
+    assertEquals("Invalid username or password", body.get("message"));
+    assertNotNull(body.get("timestamp"));
+  }
+
+  @Test
+  void testHandleInvalidCredentialsWithDifferentMessage() {
+    InvalidCredentialsException exception = new InvalidCredentialsException("Authentication failed");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidCredentials(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    assertNotNull(body);
+    assertEquals("Authentication failed", body.get("message"));
+  }
+
+  @Test
+  void testHandleInvalidCredentialsResponseStatus() {
+    InvalidCredentialsException exception = new InvalidCredentialsException("Credentials invalid");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidCredentials(exception);
+
+    assertEquals(401, response.getStatusCode().value());
+  }
+
+  @Test
+  void testHandleRateLimitExceeded() {
+    RateLimitExceededException exception = new RateLimitExceededException("Too many login attempts");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleRateLimitExceeded(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+    assertNotNull(body);
+    assertEquals(429, body.get("status"));
+    assertEquals("Too Many Requests", body.get("error"));
+    assertEquals("Too many login attempts", body.get("message"));
+    assertNotNull(body.get("timestamp"));
+  }
+
+  @Test
+  void testHandleRateLimitExceededWithDifferentMessage() {
+    RateLimitExceededException exception = new RateLimitExceededException("Payment creation rate limit exceeded");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleRateLimitExceeded(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+    assertNotNull(body);
+    assertEquals("Payment creation rate limit exceeded", body.get("message"));
+  }
+
+  @Test
+  void testHandleRateLimitExceededResponseStatus() {
+    RateLimitExceededException exception = new RateLimitExceededException("Rate limit exceeded");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleRateLimitExceeded(exception);
+
+    assertEquals(429, response.getStatusCode().value());
+  }
+
+  @Test
+  void testRateLimitExceededResponseStructure() {
+    RateLimitExceededException exception = new RateLimitExceededException("Test rate limit");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleRateLimitExceeded(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertNotNull(body);
+    assertEquals(4, body.size());
+    assertTrue(body.containsKey("timestamp"));
+    assertTrue(body.containsKey("status"));
+    assertTrue(body.containsKey("error"));
+    assertTrue(body.containsKey("message"));
+  }
+
+  @Test
+  void testInvalidCredentialsResponseStructure() {
+    InvalidCredentialsException exception = new InvalidCredentialsException("Test credentials");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handleInvalidCredentials(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertNotNull(body);
+    assertEquals(4, body.size());
+    assertTrue(body.containsKey("timestamp"));
+    assertTrue(body.containsKey("status"));
+    assertTrue(body.containsKey("error"));
+    assertTrue(body.containsKey("message"));
+  }
 }

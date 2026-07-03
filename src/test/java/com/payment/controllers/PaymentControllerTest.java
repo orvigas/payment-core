@@ -206,4 +206,201 @@ class PaymentControllerTest {
       paymentController.refundPayment("pay_999");
     });
   }
+
+  @Test
+  void testCreatePaymentReturnsPaymentId() {
+    when(paymentService.createPayment(any(CreatePaymentRequest.class)))
+        .thenReturn(paymentResponse);
+
+    ResponseEntity<PaymentResponse> response = paymentController.createPayment(createPaymentRequest);
+
+    assertNotNull(response.getBody());
+    assertEquals("pay_123", response.getBody().paymentId());
+  }
+
+  @Test
+  void testCreatePaymentReturnsPendingStatus() {
+    when(paymentService.createPayment(any(CreatePaymentRequest.class)))
+        .thenReturn(paymentResponse);
+
+    ResponseEntity<PaymentResponse> response = paymentController.createPayment(createPaymentRequest);
+
+    assertNotNull(response.getBody());
+    assertEquals(PaymentStatus.PENDING, response.getBody().status());
+  }
+
+  @Test
+  void testGetPaymentReturnsCorrectStatus() {
+    when(paymentService.getPayment(anyString()))
+        .thenReturn(paymentResponse);
+
+    ResponseEntity<PaymentResponse> response = paymentController.getPayment("pay_123");
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+  }
+
+  @Test
+  void testConfirmPaymentReturnsCompletedStatus() {
+    PaymentResponse confirmedResponse = new PaymentResponse(
+        "pay_123",
+        "user123",
+        new BigDecimal("1000.00"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.COMPLETED,
+        "Test payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        LocalDateTime.now()
+    );
+
+    when(paymentService.confirmPayment(anyString()))
+        .thenReturn(confirmedResponse);
+
+    ResponseEntity<PaymentResponse> response = paymentController.confirmPayment("pay_123");
+
+    assertEquals(PaymentStatus.COMPLETED, response.getBody().status());
+  }
+
+  @Test
+  void testRefundPaymentReturnsRefundedStatus() {
+    PaymentResponse refundedResponse = new PaymentResponse(
+        "pay_123",
+        "user123",
+        new BigDecimal("1000.00"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.REFUNDED,
+        "Test payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        LocalDateTime.now()
+    );
+
+    when(paymentService.refundPayment(anyString()))
+        .thenReturn(refundedResponse);
+
+    ResponseEntity<PaymentResponse> response = paymentController.refundPayment("pay_123");
+
+    assertEquals(PaymentStatus.REFUNDED, response.getBody().status());
+  }
+
+  @Test
+  void testCreatePaymentWithDifferentUser() {
+    CreatePaymentRequest request = new CreatePaymentRequest(
+        "different_user",
+        new BigDecimal("500.00"),
+        "USD",
+        "merchant-name",
+        "Different user payment"
+    );
+
+    PaymentResponse response = new PaymentResponse(
+        "pay_456",
+        "different_user",
+        new BigDecimal("500.00"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.PENDING,
+        "Different user payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        null
+    );
+
+    when(paymentService.createPayment(any(CreatePaymentRequest.class)))
+        .thenReturn(response);
+
+    ResponseEntity<PaymentResponse> result = paymentController.createPayment(request);
+
+    assertEquals("different_user", result.getBody().userId());
+    assertEquals("pay_456", result.getBody().paymentId());
+  }
+
+  @Test
+  void testGetPaymentVerifiesServiceCall() {
+    when(paymentService.getPayment("pay_123"))
+        .thenReturn(paymentResponse);
+
+    paymentController.getPayment("pay_123");
+
+    verify(paymentService).getPayment("pay_123");
+  }
+
+  @Test
+  void testConfirmPaymentVerifiesServiceCall() {
+    PaymentResponse confirmedResponse = new PaymentResponse(
+        "pay_123",
+        "user123",
+        new BigDecimal("1000.00"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.COMPLETED,
+        "Test payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        LocalDateTime.now()
+    );
+
+    when(paymentService.confirmPayment("pay_123"))
+        .thenReturn(confirmedResponse);
+
+    paymentController.confirmPayment("pay_123");
+
+    verify(paymentService).confirmPayment("pay_123");
+  }
+
+  @Test
+  void testRefundPaymentVerifiesServiceCall() {
+    PaymentResponse refundedResponse = new PaymentResponse(
+        "pay_123",
+        "user123",
+        new BigDecimal("1000.00"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.REFUNDED,
+        "Test payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        LocalDateTime.now()
+    );
+
+    when(paymentService.refundPayment("pay_123"))
+        .thenReturn(refundedResponse);
+
+    paymentController.refundPayment("pay_123");
+
+    verify(paymentService).refundPayment("pay_123");
+  }
+
+  @Test
+  void testCreatePaymentWithLargeAmount() {
+    CreatePaymentRequest request = new CreatePaymentRequest(
+        "user123",
+        new BigDecimal("999999.99"),
+        "USD",
+        "merchant-name",
+        "Large payment"
+    );
+
+    PaymentResponse response = new PaymentResponse(
+        "pay_999",
+        "user123",
+        new BigDecimal("999999.99"),
+        "USD",
+        "merchant-name",
+        PaymentStatus.PENDING,
+        "Large payment",
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        null
+    );
+
+    when(paymentService.createPayment(any(CreatePaymentRequest.class)))
+        .thenReturn(response);
+
+    ResponseEntity<PaymentResponse> result = paymentController.createPayment(request);
+
+    assertEquals(new BigDecimal("999999.99"), result.getBody().amount());
+  }
 }
