@@ -20,6 +20,32 @@
 
   <properties>
     <java.version>21</java.version>
+    <!-- Maven Plugins -->
+    <maven.compiler.version>3.13.0</maven.compiler.version>
+    <jacoco.version>0.8.12</jacoco.version>
+    <!-- Direct Dependencies -->
+    <lombok.version>1.18.38</lombok.version>
+    <mockito.version>5.2.0</mockito.version>
+    <postgresql.version>42.7.11</postgresql.version>
+    <h2.version>2.3.232</h2.version>
+    <!-- Spring & Spring Boot Ecosystem -->
+    <spring.kafka.version>3.3.16</spring.kafka.version>
+    <spring.kafka.test.version>3.3.16</spring.kafka.test.version>
+    <!-- API Documentation -->
+    <springdoc.version>2.8.6</springdoc.version>
+    <!-- Resilience -->
+    <resilience4j.version>2.4.0</resilience4j.version>
+    <!-- Observability -->
+    <micrometer.registry.prometheus.version>1.15.12</micrometer.registry.prometheus.version>
+    <micrometer.tracing.version>1.5.12</micrometer.tracing.version>
+    <!-- Tracing -->
+    <zipkin.version>2.17.1</zipkin.version>
+    <!-- Logging -->
+    <logstash.logback.version>7.3</logstash.logback.version>
+    <!-- JWT -->
+    <jjwt.version>0.12.7</jjwt.version>
+    <!-- Validation -->
+    <jakarta.validation.version>3.0.2</jakarta.validation.version>
   </properties>
 
   <dependencies>
@@ -45,6 +71,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
       <scope>runtime</scope>
     </dependency>
 
@@ -66,7 +93,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>5.2.0</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -80,13 +107,14 @@
     <dependency>
       <groupId>org.springframework.kafka</groupId>
       <artifactId>spring-kafka</artifactId>
-      <version>3.1.2</version>
+      <version>${spring.kafka.version}</version>
     </dependency>
 
     <!-- Spring Kafka Test Support -->
     <dependency>
       <groupId>org.springframework.kafka</groupId>
       <artifactId>spring-kafka-test</artifactId>
+      <version>${spring.kafka.test.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -94,6 +122,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
+      <version>${h2.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -101,57 +130,99 @@
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-      <version>2.8.6</version>
+      <version>${springdoc.version}</version>
     </dependency>
 
     <!-- Resilience4j -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-spring-boot3</artifactId>
-      <version>2.1.0</version>
+      <version>${resilience4j.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-circuitbreaker</artifactId>
-      <version>2.1.0</version>
+      <version>${resilience4j.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
-      <version>2.1.0</version>
+      <version>${resilience4j.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-timelimiter</artifactId>
-      <version>2.1.0</version>
+      <version>${resilience4j.version}</version>
     </dependency>
 
     <!-- Prometheus Metrics -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
+      <version>${micrometer.registry.prometheus.version}</version>
     </dependency>
 
     <!-- Distributed Tracing -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-tracing-bridge-brave</artifactId>
+      <version>${micrometer.tracing.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-reporter</artifactId>
-      <version>2.17.1</version>
+      <version>${zipkin.version}</version>
     </dependency>
 
     <!-- Structured Logging (JSON) -->
     <dependency>
       <groupId>net.logstash.logback</groupId>
       <artifactId>logstash-logback-encoder</artifactId>
-      <version>7.3</version>
+      <version>${logstash.logback.version}</version>
+    </dependency>
+
+    <!-- JWT Support -->
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-api</artifactId>
+      <version>${jjwt.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-impl</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Spring Security -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <!-- Rate Limiting -->
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-ratelimiter</artifactId>
+      <version>${resilience4j.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+      <version>${jakarta.validation.version}</version>
     </dependency>
   </dependencies>
 
@@ -160,14 +231,14 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
+        <version>${maven.compiler.version}</version>
         <configuration>
           <release>21</release>
           <annotationProcessorPaths>
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
-              <version>1.18.36</version>
+              <version>${lombok.version}</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
@@ -197,7 +268,7 @@
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.12</version>
+        <version>${jacoco.version}</version>
         <executions>
           <execution>
             <goals>
