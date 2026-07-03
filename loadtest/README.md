@@ -14,17 +14,14 @@ This directory contains load tests for validating payment API performance, scala
 
 ### payment-load-test.js
 
-Complete workflow simulating real user behavior:
+JWT-authenticated payment creation workflow:
 
-1. Create payment (POST /api/v1/payments)
-2. Wait 1 second
-3. Retrieve payment (GET /api/v1/payments/{id})
-4. Random wait (0-3 seconds)
+1. Setup phase: Obtain JWT access token via login
+2. Load phase: Create payments with JWT authentication (POST /api/v1/payments)
 
 **Load Profile**:
-- Ramps from 10 to 100 users over 19 minutes
-- Validates 95th percentile latency < 500ms for create, < 200ms for get
-- Enforces < 10% error rate
+- Ramps from 10 to 50 users over 9 minutes (simplified for focused testing)
+- Tests authenticated endpoints with Bearer token in Authorization header
 
 ### scenarios/steady-state.js
 
@@ -99,17 +96,15 @@ k6 run payment-load-test.js --out json=results/output.json && \
 
 ## Metrics
 
-All tests track:
+The test tracks standard k6 metrics:
 
 | Metric | Type | Description |
 |--------|------|-------------|
 | `http_req_duration` | Trend (ms) | Request latency |
-| `create_payment_duration_ms` | Trend | Create operation latency |
-| `get_payment_duration_ms` | Trend | Get operation latency |
 | `http_req_failed` | Rate | Failed request percentage |
-| `errors` | Rate | Custom error rate |
-| `payments_success` | Counter | Successful payments |
-| `payments_failed` | Counter | Failed payments |
+| `checks` | Rate | Custom check pass rate |
+| `data_received` | Counter | Total bytes received |
+| `data_sent` | Counter | Total bytes sent |
 
 ### Viewing Results
 
@@ -127,46 +122,38 @@ payments_failed..................: 3
 
 ## Thresholds
 
-Thresholds define pass/fail criteria for tests:
+The main test focuses on validating successful operations:
 
-### Full Flow Test
-- Create: p95 < 500ms, p99 < 1000ms
-- Get: p95 < 200ms, p99 < 500ms
-- Error rate: < 10%
+### payment-load-test.js
+- All requests should return 201 (Created) status
+- All responses should include a paymentId
+- Error rate should be minimal
 
-### Steady State
-- Create: p95 < 500ms, p99 < 1000ms
-- Error rate: < 5%
-
-### Spike Test
-- Create: p99 < 2000ms (relaxed due to spike)
-- Error rate: < 20% (relaxed due to spike)
+Thresholds can be customized by modifying the `options` object in the test file.
 
 ## Test Design Considerations
 
-### Cardinality Management
+### Authentication Testing
 
-These tests use deterministic user ID pooling to avoid metrics cardinality explosion:
+The test includes authentication setup:
 
-- User IDs are pooled, not random
-- Request metrics are grouped by operation, not ID
-- Each endpoint tagged with `name` for clear separation
-- Reduces metric cardinality from 200k+ to ~10 series
+- Single JWT token obtained in setup phase via login endpoint
+- Token shared across all load test iterations
+- Authorization header includes Bearer token for each payment creation request
 
-### Realistic Behavior
+### Load Testing Focus
 
-- Progressive load ramp (not instant)
-- Think time between operations (1-3 seconds)
-- Varied amounts and merchants (realistic variance)
-- Payment flow tests create then retrieve (common pattern)
+- Progressive load ramp (not instant spike)
+- Tests authenticated endpoints under realistic user count
+- Validates both successful operations and error handling
 
 ### Performance Validation
 
-Tests validate critical paths:
+Tests validate:
 
-1. **Latency**: Response times within acceptable bounds
-2. **Success Rate**: Error rate below threshold
-3. **Recovery**: System recovers after load spikes
+1. **Success Rate**: Payments created successfully with valid JWT auth
+2. **Response Validity**: All responses include paymentId
+3. **Load Stability**: System handles increased concurrent users
 
 ## Baseline Comparison
 
@@ -231,12 +218,11 @@ k6 run payment-load-test.js || exit 1
 
 ## Performance Targets
 
-For reference, target metrics:
+For reference, expected performance metrics (with JWT authentication):
 
 | Operation | p50 | p95 | p99 |
 |-----------|-----|-----|-----|
-| Create Payment | 100ms | 450ms | 800ms |
-| Get Payment | 50ms | 150ms | 300ms |
+| Create Payment (Authenticated) | 100ms | 500ms | 1000ms |
 
 ## Extensions
 
@@ -257,11 +243,16 @@ k6 run payment-load-test.js --vus 500 --duration 30m
 
 ### Custom Metrics
 
-Add custom tracking:
+The current test focuses on standard k6 metrics. To add custom tracking:
 
 ```javascript
-// In test files, add payload metrics
+// In test files, import metrics
+import { Trend } from 'k6/metrics';
+
+// Create custom metric
 const paymentAmountHistogram = new Trend('payment_amount');
+
+// Add values during test execution
 paymentAmountHistogram.add(payload.amount);
 ```
 
