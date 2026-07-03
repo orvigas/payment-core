@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -16,6 +17,7 @@ import io.micrometer.core.instrument.Timer;
  * @author orvigas@gmail.com
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class CustomMetricsTest {
 
   @Autowired

@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -26,6 +27,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  * @author orvigas@gmail.com
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class ResilienceConfigTest {
 
   @Autowired

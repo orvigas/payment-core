@@ -5,6 +5,7 @@ import org.mockito.MockedStatic;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.mockStatic;
  * @author orvigas@gmail.com
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@ActiveProfiles("test")
 @TestPropertySource(properties = "spring.main.lazy-initialization=true")
 class PaymentCoreApplicationTest {
 
