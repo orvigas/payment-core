@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -53,8 +55,16 @@ public class Payment {
     @Column(name = "merchant", nullable = false)
     private String merchant;
 
-    /** Current status of the payment (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED). */
+    /**
+     * Current status of the payment (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED).
+     *
+     * <p>The status column is a native Postgres enum ({@code payment_status}, see
+     * V001__initial_schema.sql), not a plain varchar, so it needs {@code NAMED_ENUM} to bind
+     * correctly - plain {@code @Enumerated(STRING)} sends a varchar parameter and Postgres
+     * rejects the implicit cast.
+     */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     private PaymentStatus status;
 

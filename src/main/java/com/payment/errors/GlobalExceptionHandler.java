@@ -47,6 +47,18 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles InvalidCredentialsException.
+   *
+   * @param ex the invalid credentials exception
+   * @return ResponseEntity with HTTP 401 (Unauthorized) status and error details
+   */
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<Map<String, Object>> handleInvalidCredentials(InvalidCredentialsException ex) {
+    log.warn("Authentication failed: {}", ex.getMessage());
+    return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+  }
+
+  /**
    * Handles RateLimitExceededException.
    *
    * @param ex the rate limit exceeded exception

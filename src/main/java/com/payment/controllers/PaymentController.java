@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 
 /**
@@ -116,14 +117,19 @@ public class PaymentController {
   }
 
   /**
-   * Fallback for createPayment when rate limit is exceeded.
+   * Fallback for createPayment when the rate limit is exceeded.
+   *
+   * <p>Only matches {@link RequestNotPermitted}, the exception Resilience4j throws when a
+   * permit can't be acquired - not {@code Exception} in general, otherwise unrelated failures
+   * from {@code createPayment} (e.g. a database error) would get reported to callers as a
+   * false 429 instead of surfacing as the real error.
    *
    * @param request the payment creation request
    * @param ex the rate limit exception
    * @throws RateLimitExceededException when the rate limit is exceeded
    */
   public ResponseEntity<PaymentResponse> createPaymentFallback(
-      CreatePaymentRequest request, Exception ex) {
+      CreatePaymentRequest request, RequestNotPermitted ex) {
     log.warn("Payment creation rate limit exceeded");
     throw new RateLimitExceededException("Payment creation rate limit exceeded. Please try again later.");
   }
