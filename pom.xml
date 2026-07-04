@@ -28,6 +28,7 @@
     <mockito.version>5.2.0</mockito.version>
     <postgresql.version>42.7.11</postgresql.version>
     <h2.version>2.3.232</h2.version>
+    <flyway.version>11.7.2</flyway.version>
     <!-- Spring & Spring Boot Ecosystem -->
     <spring.kafka.version>3.3.16</spring.kafka.version>
     <spring.kafka.test.version>3.3.16</spring.kafka.test.version>
@@ -77,17 +78,20 @@
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
+      <version>${flyway.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
+      <version>${flyway.version}</version>
     </dependency>
 
     <!-- Lombok (reduce boilerplate) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
       <scope>provided</scope>
     </dependency>
 
