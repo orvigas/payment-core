@@ -287,6 +287,45 @@ SELECT u.id, 'USER' FROM users u WHERE u.username = 'someuser';
 
 Docker Compose is the supported deployment for local and demo use; the compose file wires healthcheck-based startup ordering across PostgreSQL, Zookeeper, Kafka, Prometheus, Jaeger, the application, and the seed job. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) documents the topology, every configuration knob, and the production checklist (JWT secret handling, disabling schema reset, removing the debug agent from the image, and more). Security hardening items are tracked in [docs/SECURITY.md](docs/SECURITY.md).
 
+## Reference Development Environment
+
+This project was developed and verified on the machine and toolchain below. Nothing in the codebase depends on this specific setup (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the actual runtime requirements), but it's recorded here for reproducing an issue or comparing against an unexpected local result.
+
+### Hardware
+
+| Component | Spec |
+|---|---|
+| Model | MacBook Pro (MacBookPro18,1) |
+| Chip | Apple M1 Pro (10 cores: 8 performance, 2 efficiency) |
+| Memory | 16 GB |
+| Storage | 494 GB |
+
+### Operating System
+
+| Component | Version |
+|---|---|
+| macOS | 26.5.1 (build 25F80) |
+
+### Toolchain
+
+| Tool | Version |
+|---|---|
+| Java (Amazon Corretto) | 23.0.2 |
+| Maven | 3.9.16 |
+| Docker Desktop | 4.80.0 |
+| Docker Engine | 29.6.1 |
+| Docker Compose | v5.3.0 |
+| Git | 2.54.0 |
+| k6 | v2.1.0 |
+
+### Development Tools
+
+| Tool | Version |
+|---|---|
+| IDE | Visual Studio Code 1.127.0 |
+| Database client | DBeaver 26.1.1 |
+| Browser | Brave 149.1.91.180 |
+
 ## License
 
 See [LICENSE](LICENSE).
