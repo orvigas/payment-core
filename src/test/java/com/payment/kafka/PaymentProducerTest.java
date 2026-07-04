@@ -86,6 +86,18 @@ class PaymentProducerTest {
   }
 
   @Test
+  void testOnPaymentInitiatedPublishesToKafka() {
+    stubSendSuccess();
+
+    paymentProducer.onPaymentInitiated(initiatedEvent);
+
+    verify(kafkaTemplate).send(messageCaptor.capture());
+    Message<?> message = messageCaptor.getValue();
+    assertEquals(KafkaTopics.PAYMENT_INITIATED, message.getHeaders().get(KafkaHeaders.TOPIC));
+    assertEquals("pay_123", message.getHeaders().get(KafkaHeaders.RECEIVED_KEY));
+  }
+
+  @Test
   void testPublishPaymentInitiatedGeneratesCorrelationId() {
     stubSendSuccess();
 

@@ -3,6 +3,7 @@ package com.payment.services;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +13,6 @@ import com.payment.errors.InvalidPaymentException;
 import com.payment.errors.PaymentAccessDeniedException;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.events.PaymentInitiatedEvent;
-import com.payment.kafka.PaymentProducer;
 import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import com.payment.observability.CustomMetrics;
@@ -44,7 +44,7 @@ public class PaymentService {
 
   private final PaymentRepository paymentRepository;
   private final PaymentValidator paymentValidator;
-  private final PaymentProducer paymentProducer;
+  private final ApplicationEventPublisher applicationEventPublisher;
   private final CustomMetrics customMetrics;
 
   /**
@@ -85,7 +85,9 @@ public class PaymentService {
       customMetrics.incrementPaymentCreated();
       log.info("Payment created: {}", saved.getPaymentId());
 
-      // Publish event
+      // Publish event only after this transaction commits (see PaymentProducer.onPaymentInitiated) -
+      // publishing inline here let a fast Kafka consumer read the payment row before this
+      // transaction had actually committed it, causing a spurious "payment not found".
       PaymentInitiatedEvent event = PaymentInitiatedEvent.builder()
           .paymentId(saved.getPaymentId())
           .userId(saved.getUserId())
@@ -96,7 +98,7 @@ public class PaymentService {
           .createdAt(saved.getCreatedAt())
           .build();
 
-      paymentProducer.publishPaymentInitiated(event);
+      applicationEventPublisher.publishEvent(event);
 
       return mapToResponse(saved);
 

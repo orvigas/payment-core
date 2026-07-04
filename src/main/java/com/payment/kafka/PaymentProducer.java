@@ -7,6 +7,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.payment.events.PaymentChargedEvent;
 import com.payment.events.PaymentCompletedEvent;
@@ -29,6 +31,22 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentProducer {
 
   private final KafkaTemplate<String, Object> kafkaTemplate;
+
+  /**
+   * Publishes the payment-initiated event once the transaction that created the payment
+   * row has committed.
+   *
+   * <p>{@code PaymentService.createPayment} publishes this as a Spring application event
+   * rather than calling {@link #publishPaymentInitiated} directly, specifically so the Kafka
+   * send happens after commit - otherwise a fast consumer could read the payment before its
+   * insert was visible outside the transaction and fail with a spurious "not found".
+   *
+   * @param event the payment initiation event to publish
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onPaymentInitiated(PaymentInitiatedEvent event) {
+    publishPaymentInitiated(event);
+  }
 
   /**
    * Publishes a payment initiated event to the payment-initiated topic.

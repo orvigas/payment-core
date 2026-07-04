@@ -3,6 +3,7 @@ package com.payment.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -144,12 +145,22 @@ public class KafkaConfig {
   /**
    * Creates the template used by producers to send payment events.
    *
+   * <p>Observation is enabled explicitly because this template is built manually rather
+   * than through Spring Boot's Kafka autoconfiguration, which is what normally wires
+   * tracing in for free - without this, publishing a message creates no span at all, and
+   * the trace never crosses the Kafka hop into the consumers below.
+   *
    * @param producerFactory factory supplying producer instances
+   * @param observationRegistry registry that spans and Kafka metrics are recorded through
    * @return Kafka template for publishing payment events
    */
   @Bean
-  KafkaTemplate<String, Object> kafkaTemplate(@NonNull ProducerFactory<String, Object> producerFactory) {
-    return new KafkaTemplate<>(producerFactory);
+  KafkaTemplate<String, Object> kafkaTemplate(
+      @NonNull ProducerFactory<String, Object> producerFactory, @NonNull ObservationRegistry observationRegistry) {
+    KafkaTemplate<String, Object> template = new KafkaTemplate<>(producerFactory);
+    template.setObservationEnabled(true);
+    template.setObservationRegistry(observationRegistry);
+    return template;
   }
 
   /**
@@ -174,16 +185,22 @@ public class KafkaConfig {
    * Creates the listener container factory for {@code @KafkaListener} methods.
    *
    * <p>Concurrency matches the topic partition count so each partition gets a consumer.
+   * Observation is enabled explicitly for the same reason as {@link #kafkaTemplate} -
+   * this factory is built manually, not through Spring Boot's Kafka autoconfiguration,
+   * so nothing turns tracing on for the consumer side by default.
    *
    * @param consumerFactory factory supplying consumer instances
+   * @param observationRegistry registry that spans and Kafka metrics are recorded through
    * @return listener container factory
    */
   @Bean
   KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, Object>> kafkaListenerContainerFactory(
-      @NonNull ConsumerFactory<String, Object> consumerFactory) {
+      @NonNull ConsumerFactory<String, Object> consumerFactory, @NonNull ObservationRegistry observationRegistry) {
     ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
     factory.setConcurrency(3);
+    factory.getContainerProperties().setObservationEnabled(true);
+    factory.getContainerProperties().setObservationRegistry(observationRegistry);
     return factory;
   }
 

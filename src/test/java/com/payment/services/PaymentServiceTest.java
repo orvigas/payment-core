@@ -6,15 +6,16 @@ import com.payment.models.PaymentStatus;
 import com.payment.errors.InvalidPaymentException;
 import com.payment.errors.PaymentAccessDeniedException;
 import com.payment.errors.PaymentNotFoundException;
+import com.payment.events.PaymentInitiatedEvent;
 import com.payment.observability.CustomMetrics;
 import com.payment.repositories.PaymentRepository;
-import com.payment.kafka.PaymentProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -38,7 +39,7 @@ public class PaymentServiceTest {
   private PaymentValidator paymentValidator;
 
   @Mock
-  private PaymentProducer paymentProducer;
+  private ApplicationEventPublisher applicationEventPublisher;
 
   @Mock
   private CustomMetrics customMetrics;
@@ -74,6 +75,9 @@ public class PaymentServiceTest {
     assertEquals("pay_123", response.paymentId());
     assertEquals(PaymentStatus.PENDING, response.status());
     verify(paymentRepository, times(1)).save(any());
+    // Published as an application event, not sent to Kafka directly, so the send only
+    // happens once this transaction commits - see PaymentProducer.onPaymentInitiated.
+    verify(applicationEventPublisher).publishEvent(any(PaymentInitiatedEvent.class));
   }
 
   @Test

@@ -218,8 +218,9 @@ logging:
     # Verbose logging for payment module for debugging
     "[com.payment]": DEBUG
   pattern:
-    # Log format with timestamp and message
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    # traceId/spanId come from Micrometer Tracing's MDC integration - empty
+    # outside a traced request rather than absent, so the column stays aligned.
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId:-},%X{spanId:-}] - %msg%n"
   file:
     # File path for persisting logs
     name: logs/payment-core.log
