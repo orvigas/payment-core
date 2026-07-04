@@ -25,7 +25,7 @@ JWT-authenticated payment creation workflow:
 
 ### scenarios/steady-state.js
 
-Sustained load test to validate stable operation:
+Sustained load test to validate stable operation. Like `payment-load-test.js`, it logs in once in the setup phase and sends the resulting Bearer token on every request.
 
 - 50 concurrent users
 - 10-minute duration
@@ -34,7 +34,7 @@ Sustained load test to validate stable operation:
 
 ### scenarios/spike-test.js
 
-Traffic spike scenario to test resilience:
+Traffic spike scenario to test resilience. Like `payment-load-test.js`, it logs in once in the setup phase and sends the resulting Bearer token on every request.
 
 - Normal load (50 users for 2 minutes)
 - Spike to 500 users (1 minute)
@@ -154,10 +154,10 @@ Thresholds can be customized by modifying the `options` object in the test file.
 
 ### Authentication Testing
 
-The test includes authentication setup:
+All three scripts (`payment-load-test.js`, `scenarios/steady-state.js`, `scenarios/spike-test.js`) share the same authentication setup:
 
 - Single JWT token obtained in setup phase via login endpoint
-- Token shared across all load test iterations
+- Token shared across all load test iterations and VUs
 - Authorization header includes Bearer token for each payment creation request
 
 ### Load Testing Focus

@@ -4,15 +4,16 @@ import { Rate, Trend, Counter } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
+// Must match a row already seeded via loadtest/seed-load-test-user.sql - login
+// now checks real credentials, so there's no implicit user creation anymore.
+const LOAD_TEST_USERNAME = __ENV.LOAD_TEST_USERNAME || 'load_test_user';
+const LOAD_TEST_PASSWORD = __ENV.LOAD_TEST_PASSWORD || 'LoadTest123!';
+
 // Custom metrics
 const errorRate = new Rate('errors');
 const paymentDuration = new Trend('create_payment_duration_ms');
 const successCount = new Counter('payments_success');
 const failureCount = new Counter('payments_failed');
-
-// Pool of stable user IDs to limit cardinality
-const USER_POOL_SIZE = 50;
-const getUserId = (vu) => `steady_user_${(vu % USER_POOL_SIZE) + 1}`;
 
 export const options = {
   vus: 50,                    // 50 concurrent users
@@ -24,9 +25,29 @@ export const options = {
   },
 };
 
-export default function () {
+export function setup() {
+  // Get token once before the test runs
+  const loginRes = http.post(
+    `${BASE_URL}/api/v1/auth/login`,
+    JSON.stringify({ username: LOAD_TEST_USERNAME, password: LOAD_TEST_PASSWORD }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  if (loginRes.status !== 200) {
+    throw new Error(
+      `Login failed with status ${loginRes.status}: ${loginRes.body}. ` +
+      'Run loadtest/seed-load-test-user.sql against the target database first.'
+    );
+  }
+
+  const accessToken = JSON.parse(loginRes.body).accessToken;
+  console.log('Setup: Got access token');
+  return { token: accessToken };
+}
+
+export default function (data) {
+  // The payment owner is derived from the JWT (load_test_user), not a request field.
   const payload = {
-    userId: getUserId(__VU),
     amount: 50.00,
     currency: 'MXN',
     merchant: 'steady_merchant',
@@ -37,7 +58,10 @@ export default function () {
     `${BASE_URL}/api/v1/payments`,
     JSON.stringify(payload),
     {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${data.token}`,
+      },
       tags: { name: 'create_payment', scenario: 'steady_state' },
     }
   );
