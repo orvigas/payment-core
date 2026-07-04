@@ -1,0 +1,225 @@
+{
+  "title": "Payment Core - Overview",
+  "uid": "payment-core-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "tags": ["payment-core"],
+  "panels": [
+    { "id": 1, "type": "row", "title": "Payment Throughput & Outcomes", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 10, "type": "stat", "title": "Creation Rate", "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(payment_total[5m]))", "legendFormat": "created/s" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 }, "overrides": [] },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 11, "type": "stat", "title": "Completion Rate", "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(payment_completed_total[5m]))", "legendFormat": "completed/s" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 12, "type": "stat", "title": "Failure Rate", "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(payment_failed_total[5m]))", "legendFormat": "failed/s" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps", "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 0.01 }
+          ] }
+        }, "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 13, "type": "stat", "title": "Active Payments", "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(payment_active)", "legendFormat": "active" }],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "graphMode": "none", "colorMode": "value" }
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Payment Outcomes Over Time", "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(payment_total[5m]))", "legendFormat": "created" },
+        { "expr": "sum(rate(payment_completed_total[5m]))", "legendFormat": "completed" },
+        { "expr": "sum(rate(payment_failed_total[5m]))", "legendFormat": "failed" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 2, "type": "row", "title": "Latency", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 20, "type": "timeseries", "title": "Payment Processing Duration (P50/P95/P99)", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "payment_processing_duration_seconds{quantile=\"0.5\"}", "legendFormat": "p50" },
+        { "expr": "payment_processing_duration_seconds{quantile=\"0.95\"}", "legendFormat": "p95" },
+        { "expr": "payment_processing_duration_seconds{quantile=\"0.99\"}", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "Charge Processing Duration (P50/P95/P99)", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "charge_processing_duration_seconds{quantile=\"0.5\"}", "legendFormat": "p50" },
+        { "expr": "charge_processing_duration_seconds{quantile=\"0.95\"}", "legendFormat": "p95" },
+        { "expr": "charge_processing_duration_seconds{quantile=\"0.99\"}", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "HTTP Average Latency by Endpoint", "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Average only - http_server_requests has no configured percentile buckets, unlike the payment/charge timers above.",
+      "targets": [
+        { "expr": "sum by (uri) (rate(http_server_requests_seconds_sum[5m])) / sum by (uri) (rate(http_server_requests_seconds_count[5m]))", "legendFormat": "{{uri}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 3, "type": "row", "title": "Resilience", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 30, "type": "state-timeline", "title": "Circuit Breaker State", "gridPos": { "h": 6, "w": 12, "x": 0, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "resilience4j_circuitbreaker_state{state=\"closed\"} * 0 + ignoring(state) resilience4j_circuitbreaker_state{state=\"open\"} * 1 + ignoring(state) resilience4j_circuitbreaker_state{state=\"half_open\"} * 2", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": {
+        "mappings": [
+          { "type": "value", "options": { "0": { "text": "closed", "color": "green" }, "1": { "text": "open", "color": "red" }, "2": { "text": "half-open", "color": "yellow" } } }
+        ]
+      }, "overrides": [] },
+      "options": { "showValue": "always" }
+    },
+    {
+      "id": 31, "type": "timeseries", "title": "Circuit Breaker Failure Rate", "gridPos": { "h": 6, "w": 12, "x": 12, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "-1 means not enough calls recorded yet to compute a rate.",
+      "targets": [
+        { "expr": "resilience4j_circuitbreaker_failure_rate", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 32, "type": "timeseries", "title": "Retry Outcomes", "gridPos": { "h": 6, "w": 12, "x": 0, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (name, kind) (rate(resilience4j_retry_calls_total[5m]))", "legendFormat": "{{name}} - {{kind}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 33, "type": "timeseries", "title": "Rate Limiter Available Permits", "gridPos": { "h": 6, "w": 12, "x": 12, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "resilience4j_ratelimiter_available_permissions", "legendFormat": "{{name}}" },
+        { "expr": "resilience4j_ratelimiter_waiting_threads", "legendFormat": "{{name}} - waiting threads" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 34, "type": "timeseries", "title": "Time Limiter Outcomes", "gridPos": { "h": 6, "w": 24, "x": 0, "y": 43 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (name, kind) (rate(resilience4j_timelimiter_calls_total[5m]))", "legendFormat": "{{name}} - {{kind}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 4, "type": "row", "title": "Infrastructure", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 40, "type": "timeseries", "title": "HikariCP Connection Pool", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hikaricp_connections_active", "legendFormat": "active" },
+        { "expr": "hikaricp_connections_idle", "legendFormat": "idle" },
+        { "expr": "hikaricp_connections_pending", "legendFormat": "pending (queued)" },
+        { "expr": "hikaricp_connections_max", "legendFormat": "max" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 41, "type": "timeseries", "title": "JVM Heap Usage", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "used" },
+        { "expr": "sum(jvm_memory_max_bytes{area=\"heap\"} > 0)", "legendFormat": "max" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 42, "type": "timeseries", "title": "GC Pause Time", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 58 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (gc) (rate(jvm_gc_pause_seconds_sum[5m]))", "legendFormat": "{{gc}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 43, "type": "timeseries", "title": "CPU Usage", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 58 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "process_cpu_usage * 100", "legendFormat": "process CPU %" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 5, "type": "row", "title": "Kafka Pipeline", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 66 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 50, "type": "timeseries", "title": "Producer Send Latency (avg)", "gridPos": { "h": 7, "w": 12, "x": 0, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (name, result) (rate(spring_kafka_template_seconds_sum[5m])) / sum by (name, result) (rate(spring_kafka_template_seconds_count[5m]))", "legendFormat": "{{name}} - {{result}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 51, "type": "timeseries", "title": "Consumer Listener Latency (avg)", "gridPos": { "h": 7, "w": 12, "x": 12, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (name, result) (rate(spring_kafka_listener_seconds_sum[5m])) / sum by (name, result) (rate(spring_kafka_listener_seconds_count[5m]))", "legendFormat": "{{name}} - {{result}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 6, "type": "row", "title": "Distributed Tracing", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 74 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 60, "type": "text", "title": "Trace Exploration", "gridPos": { "h": 4, "w": 24, "x": 0, "y": 75 },
+      "options": {
+        "mode": "markdown",
+        "content": "Metrics tell you *that* something is slow or failing; traces tell you *where*. Jump to a spike above, then correlate it against traces from the same window:\n\n- [Open Jaeger UI](http://localhost:16686) - search by service (`payment-core`), operation, or time range directly.\n- [Explore in Grafana](/explore?left=%7B%22datasource%22:%22jaeger%22%7D) - query the Jaeger datasource without leaving Grafana."
+      }
+    }
+  ]
+}

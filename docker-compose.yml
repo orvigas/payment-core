@@ -102,6 +102,33 @@ services:
       timeout: 5s
       retries: 3
 
+  # Dashboards and datasources are auto-provisioned from ./grafana on startup -
+  # nothing to import by hand after `docker-compose up`.
+  grafana:
+    image: grafana/grafana:latest
+    container_name: payment-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    networks:
+      - payment-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   payment-core:
     build:
       context: .
@@ -170,3 +197,4 @@ networks:
 volumes:
   postgres_data:
   prometheus_data:
+  grafana_data:

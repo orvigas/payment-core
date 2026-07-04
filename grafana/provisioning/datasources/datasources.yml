@@ -1,0 +1,20 @@
+# Auto-provisioned on Grafana startup - nothing to configure manually.
+# Fixed uids so the dashboard JSON in ../dashboards can reference them
+# deterministically instead of Grafana's auto-generated ones.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Jaeger
+    uid: jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: false

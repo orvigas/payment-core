@@ -1,0 +1,18 @@
+# Auto-loads every JSON file in ../../dashboards on startup - the dashboard
+# ships with the repo instead of being imported by hand after each fresh stack.
+apiVersion: 1
+
+providers:
+  - name: payment-core
+    orgId: 1
+    folder: "Payment Core"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    # Read-only from the UI: with allowUiUpdates true, a saved UI edit lives only in
+    # Grafana's database and gets silently reverted on the next reload once the file
+    # and the database disagree. Keeping this false means the JSON file is always the
+    # single source of truth, no surprise resets.
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
