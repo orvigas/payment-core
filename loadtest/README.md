@@ -9,6 +9,7 @@ This directory contains load tests for validating payment API performance, scala
 - **Full Flow Test**: Complete user journey (create payment → get payment) with progressive load
 - **Steady State Test**: Sustained load to validate long-running stability
 - **Spike Test**: Traffic spike to test resilience and recovery
+- **Wave Test**: Sustained baseline with repeated spike moments, individual per-user login/logout
 
 ## Test Scripts
 
@@ -42,6 +43,15 @@ Traffic spike scenario to test resilience. Like `payment-load-test.js`, it logs 
 - Cool down (1 minute)
 - Relaxed thresholds during spike (p99 < 2s, error rate < 20%)
 
+### scenarios/wave-test.js
+
+Sustained baseline with three repeated spike moments over 10 minutes, unlike the other scenarios: each VU logs in individually as its own seeded account (`wave_test_user_<VU id>`, not a single shared login), and simulates a client-side "logout" (see Authentication Testing below) every 5 payments before logging back in for a new session.
+
+- Baseline: 20 concurrent users
+- Three spikes to 100 users (the actual "100 users in parallel" peak), each ~70s (ramp + hold + recover), spaced across the run
+- 10-minute total duration
+- No threshold on login success rate — see Authentication Testing
+
 ## Installation
 
 ```bash
@@ -73,6 +83,16 @@ psql -h localhost -U postgres -d payment_db -f seed-load-test-user.sql
 Override `LOAD_TEST_USERNAME`/`LOAD_TEST_PASSWORD` when invoking k6 if you seed different
 credentials.
 
+`scenarios/wave-test.js` needs a separate seed, since it logs in as 100 distinct accounts
+instead of one shared one:
+
+```bash
+psql -h localhost -U postgres -d payment_db -f seed-wave-test-users.sql
+```
+
+This is not part of the automatic `db-seed` docker-compose job — run it manually after the
+stack is up (and again after any restart, for the same reset-on-startup reason as above).
+
 ### Basic Usage
 
 ```bash
@@ -84,6 +104,9 @@ k6 run scenarios/steady-state.js
 
 # Run spike test scenario
 k6 run scenarios/spike-test.js
+
+# Run wave test scenario (seed-wave-test-users.sql required first)
+k6 run scenarios/wave-test.js
 ```
 
 ### Custom Configuration
@@ -132,6 +155,8 @@ The test tracks standard k6 metrics:
 | `data_received` | Counter | Total bytes received |
 | `data_sent` | Counter | Total bytes sent |
 
+`scenarios/wave-test.js` also tracks `logins_success`, `logins_rate_limited`, `logins_failed`, and `logouts` (all Counters), since it authenticates individually per VU instead of once in setup.
+
 ### Viewing Results
 
 k6 outputs results in real-time to stdout. Look for:
@@ -161,11 +186,17 @@ Thresholds can be customized by modifying the `options` object in the test file.
 
 ### Authentication Testing
 
-All three scripts (`payment-load-test.js`, `scenarios/steady-state.js`, `scenarios/spike-test.js`) share the same authentication setup:
+`payment-load-test.js`, `scenarios/steady-state.js`, and `scenarios/spike-test.js` share the same authentication setup:
 
 - Single JWT token obtained in setup phase via login endpoint
 - Token shared across all load test iterations and VUs
 - Authorization header includes Bearer token for each payment creation request
+
+`scenarios/wave-test.js` is deliberately different — each VU authenticates individually as its own account rather than sharing one token:
+
+- Each VU logs in as `wave_test_user_<VU id>`, caching the token in a per-VU (module-scope) variable — this is how k6 naturally isolates state per VU without extra bookkeeping
+- After 5 payments, the VU discards its token ("logout") and logs back in for a new session
+- The login endpoint is rate-limited to 10/min for the whole app instance, not per user, so with up to 100 individual logins clustering at each ramp-up and spike, most are expected to come back `429` — this is real, current behavior of the rate limiter (see `docs/SECURITY.md`), not a bug in the test, and the scenario has no threshold gating on login success for that reason
 
 ### Load Testing Focus
 

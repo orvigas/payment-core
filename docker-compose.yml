@@ -209,11 +209,12 @@ services:
       timeout: 10s
       retries: 3
 
-  # Seeds the load-test account (loadtest/payment-load-test.js) after every startup.
-  # app.database.reset-on-startup wipes the users table via Flyway on each app boot,
-  # so this has to rerun every time rather than only on first `docker compose up`.
-  # Waits on payment-core's healthcheck, not postgres's, because that's what
-  # guarantees Flyway has already created the users/user_roles tables.
+  # Seeds the load-test accounts (loadtest/payment-load-test.js and the wave-test
+  # scenario's 100 accounts) after every startup. app.database.reset-on-startup wipes
+  # the users table via Flyway on each app boot, so this has to rerun every time
+  # rather than only on first `docker compose up`. Waits on payment-core's
+  # healthcheck, not postgres's, because that's what guarantees Flyway has already
+  # created the users/user_roles tables.
   db-seed:
     image: postgres:15-alpine
     container_name: payment-db-seed
@@ -224,7 +225,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./loadtest/seed-load-test-user.sql:/seed-load-test-user.sql:ro
-    entrypoint: [ "psql", "-h", "postgres", "-U", "postgres", "-d", "payment_db", "-f", "/seed-load-test-user.sql" ]
+      - ./loadtest/seed-wave-test-users.sql:/seed-wave-test-users.sql:ro
+    entrypoint: [ "sh", "-c", "psql -h postgres -U postgres -d payment_db -f /seed-load-test-user.sql && psql -h postgres -U postgres -d payment_db -f /seed-wave-test-users.sql" ]
     networks:
       - payment-network
 
