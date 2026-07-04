@@ -106,7 +106,6 @@ curl -s -X POST http://localhost:8080/api/v1/payments \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "load_test_user",
     "amount": 5000.00,
     "currency": "MXN",
     "merchant": "jersey-mikes",
@@ -114,7 +113,7 @@ curl -s -X POST http://localhost:8080/api/v1/payments \
   }'
 ```
 
-The payment is created in `PENDING` status and charged asynchronously via Kafka; see the event flow in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The payment's owner is always the authenticated caller (the JWT subject), not a request field, so a token can never be used to create a payment attributed to another user. The payment is created in `PENDING` status and charged asynchronously via Kafka; see the event flow in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### API documentation
 
@@ -129,10 +128,10 @@ With the application running:
 |---|---|---|---|
 | POST | `/api/v1/auth/login` | Public (rate limited: 10/min) | Exchange username/password for JWT access and refresh tokens |
 | POST | `/api/v1/auth/refresh` | Refresh token | Get a new access token |
-| POST | `/api/v1/payments` | Bearer token (rate limited: 100/h) | Create a payment (`201 Created`) |
-| GET | `/api/v1/payments/{paymentId}` | Bearer token | Retrieve a payment |
-| POST | `/api/v1/payments/{paymentId}/confirm` | Bearer token | Confirm a `PENDING` payment |
-| POST | `/api/v1/payments/{paymentId}/refund` | Bearer token | Refund a `COMPLETED` payment |
+| POST | `/api/v1/payments` | Bearer token (rate limited: 100/h) | Create a payment owned by the caller (`201 Created`) |
+| GET | `/api/v1/payments/{paymentId}` | Bearer token, owner only | Retrieve a payment |
+| POST | `/api/v1/payments/{paymentId}/confirm` | Bearer token, owner only | Confirm a `PENDING` payment |
+| POST | `/api/v1/payments/{paymentId}/refund` | Bearer token, owner only | Refund a `COMPLETED` payment |
 
 Error responses are structured JSON produced by `GlobalExceptionHandler`:
 
@@ -145,7 +144,7 @@ Error responses are structured JSON produced by `GlobalExceptionHandler`:
 }
 ```
 
-Common statuses: `400` validation or invalid state transition, `401` missing/invalid token, `404` unknown payment, `429` rate limit exceeded, `500` unexpected failure.
+Common statuses: `400` validation or invalid state transition, `401` missing/invalid token, `403` payment belongs to a different user, `404` unknown payment, `429` rate limit exceeded, `500` unexpected failure.
 
 ## Architecture Overview
 
@@ -161,7 +160,7 @@ Services (PaymentService, PaymentValidator)     -- @Transactional business logic
   |                          \
 Repositories (JPA)            PaymentProducer -> Kafka topics
   |                                                 |
-PostgreSQL (Flyway V001-V007)      ChargingConsumer / NotificationConsumer / AnalyticsConsumer
+PostgreSQL (Flyway V001-V008)      ChargingConsumer / NotificationConsumer / AnalyticsConsumer
 ```
 
 - **Synchronous path**: controller, service, repository. Records as request/response contracts, two-level validation (Bean Validation plus `PaymentValidator`), exception translation to structured errors.
@@ -187,7 +186,7 @@ src/main/java/com/payment/
 
 src/main/resources/
 ├── application.yml
-└── db/migration/    # Flyway V001__initial_schema.sql ... V007__add_real_authentication.sql
+└── db/migration/    # Flyway V001__initial_schema.sql ... V008__add_payments_user_fk.sql
 
 src/test/java/com/payment/   # ~250 tests: controllers, security, services, kafka, config,
                              # errors, events, models, observability, resilience
@@ -209,7 +208,7 @@ Configuration lives in `application.yml` and is overridden via environment varia
 
 ### Database
 
-The schema is owned by Flyway (`src/main/resources/db/migration/`, currently V001 through V007); Hibernate runs with `ddl-auto: validate` and fails fast if entity mappings drift from the migrated schema. Never edit an applied migration — add a new `Vnnn__description.sql` instead. The development default recreates the schema on every startup; [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers the flags that must change before touching a real database.
+The schema is owned by Flyway (`src/main/resources/db/migration/`, currently V001 through V008); Hibernate runs with `ddl-auto: validate` and fails fast if entity mappings drift from the migrated schema. Never edit an applied migration — add a new `Vnnn__description.sql` instead. The development default recreates the schema on every startup; [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers the flags that must change before touching a real database.
 
 ### Kafka
 

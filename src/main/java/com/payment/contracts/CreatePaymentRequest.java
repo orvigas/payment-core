@@ -8,9 +8,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Immutable data contract for creating a payment.
  *
  * <p>This record encapsulates all required information to initiate a new payment transaction. All
- * fields are validated upon construction using Jakarta Bean Validation annotations.
+ * fields are validated upon construction using Jakarta Bean Validation annotations. The payment
+ * owner is not part of this contract: it is taken from the authenticated caller's JWT so a client
+ * cannot create a payment attributed to another user.
  *
- * @param userId unique identifier of the user initiating the payment (required, non-blank)
  * @param amount transaction amount in the specified currency (required, minimum 0.01)
  * @param currency ISO 4217 three-letter currency code (required, must match pattern ^[A-Z]{3}$)
  * @param merchant identifier of the merchant receiving the payment (required, non-blank)
@@ -19,10 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @version 1.0.0
  */
 public record CreatePaymentRequest(
-    @Schema(description = "Unique identifier of the user initiating the payment", example = "user-12345")
-    @NotBlank(message = "User ID is required")
-    String userId,
-
     @Schema(description = "Transaction amount in the specified currency", example = "99.99")
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")

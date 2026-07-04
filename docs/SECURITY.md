@@ -38,6 +38,16 @@ The default rule is deny-without-authentication: any endpoint not explicitly per
 
 CORS allows `http://localhost:3000` and `http://localhost:8080` with credentials, covering local frontend development. Real deployments need their actual origins listed; wildcard origins with credentials are not an option.
 
+## Payment Ownership
+
+Every payment has exactly one owner, and only that owner can read, confirm, or refund it:
+
+- **Creation.** `CreatePaymentRequest` has no `userId` field. `PaymentController` takes the owner from the authenticated `Authentication` principal (the JWT subject) and `PaymentService.createPayment` writes it onto the entity — a client can never create a payment attributed to someone else.
+- **Access.** `PaymentService.getPayment`, `confirmPayment`, and `refundPayment` each take the requester's ID alongside the payment ID and call a shared `requireOwner` check right after loading the payment. A mismatch throws `PaymentAccessDeniedException`, mapped by `GlobalExceptionHandler` to `403 Forbidden`, before any status or business-rule check runs.
+- **Defense in depth.** Migration `V008__add_payments_user_fk.sql` adds a foreign key from `payments.user_id` to `users.user_id`, so a payment can no longer be persisted with an owner that isn't a real account — closing the gap left by `payments` (V001) predating `users` (V007).
+
+Payment IDs are still random UUIDs, but ownership is enforced independently of that: even a leaked ID only works for the account that actually owns the payment.
+
 ## Rate Limiting
 
 Resilience4j rate limiters (`RateLimitingConfig`) protect the endpoints most attractive to abuse:
@@ -61,13 +71,12 @@ These are real weaknesses in the current code and configuration, listed so nobod
 
 1. **Default JWT secret fallback.** `app.jwt.secret` falls back to a hardcoded placeholder when `JWT_SECRET` is unset. Anyone who reads the repository can forge tokens against an instance running the default. Deployments must set `JWT_SECRET` to a random value of at least 32 characters from a secret store, and startup should ideally fail without it.
 2. **Roles are not enforced.** `JwtAuthenticationFilter` builds the authentication with an empty authority list, so the `USER`/`ADMIN` roles stored on `User` never reach the security context and no endpoint can currently be restricted to admins.
-3. **No ownership enforcement on payments.** The caller's identity from the JWT is never compared against a payment's owner: any authenticated user can read any payment by ID, and `CreatePaymentRequest` accepts an arbitrary `userId`, so a caller can create payments attributed to another user. `payments.user_id` also carries no foreign key to `users` (it predates the `users` table, added in V007, and V007 never added the constraint), so a spoofed `userId` does not even need to belong to a real account. Payment IDs are random UUIDs, which limits blind guessing but is not an access control — an ID that leaks through a receipt, log line, or Kafka event hands full read/confirm/refund access to whoever holds it. Fixing this means taking the `userId` from the security context instead of the request body, checking ownership on read/confirm/refund, and adding the missing foreign key.
-4. **Refresh tokens are only checked for validity, not type.** `POST /api/v1/auth/refresh` accepts any valid signed token, including an access token, because the `type` claim is not verified. Access and refresh tokens also share the same signing key, and there is no revocation: a leaked refresh token works until it expires.
-5. **JDWP debug port in the image.** The Dockerfile starts the JVM with a debug agent on port 5005; an attached debugger is remote code execution. Remove it outside local development (see [DEPLOYMENT.md](DEPLOYMENT.md)).
-6. **Open actuator and Swagger.** `/actuator/prometheus` and Swagger UI are public, exposing internal metrics and the full API surface to anyone who can reach the service. Restrict them at the network layer or behind authentication.
-7. **Seeded credentials.** The `db-seed` service creates `load_test_user` with a password published in this repository. Never run it against a shared environment.
-8. **No TLS termination in the stack.** JWTs in headers are only as safe as the transport; production traffic must be HTTPS end to end (typically terminated at a load balancer or ingress).
-9. **Destructive database defaults.** `DB_RESET_ON_STARTUP=true` plus `clean-disabled: false` will drop a production schema on boot if pointed at one. Both must be flipped before touching non-disposable data (see [DEPLOYMENT.md](DEPLOYMENT.md)).
+3. **Refresh tokens are only checked for validity, not type.** `POST /api/v1/auth/refresh` accepts any valid signed token, including an access token, because the `type` claim is not verified. Access and refresh tokens also share the same signing key, and there is no revocation: a leaked refresh token works until it expires.
+4. **JDWP debug port in the image.** The Dockerfile starts the JVM with a debug agent on port 5005; an attached debugger is remote code execution. Remove it outside local development (see [DEPLOYMENT.md](DEPLOYMENT.md)).
+5. **Open actuator and Swagger.** `/actuator/prometheus` and Swagger UI are public, exposing internal metrics and the full API surface to anyone who can reach the service. Restrict them at the network layer or behind authentication.
+6. **Seeded credentials.** The `db-seed` service creates `load_test_user` with a password published in this repository. Never run it against a shared environment.
+7. **No TLS termination in the stack.** JWTs in headers are only as safe as the transport; production traffic must be HTTPS end to end (typically terminated at a load balancer or ingress).
+8. **Destructive database defaults.** `DB_RESET_ON_STARTUP=true` plus `clean-disabled: false` will drop a production schema on boot if pointed at one. Both must be flipped before touching non-disposable data (see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ## Adding Secured Endpoints
 

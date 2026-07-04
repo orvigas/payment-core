@@ -4,6 +4,7 @@ import com.payment.contracts.CreatePaymentRequest;
 import com.payment.models.Payment;
 import com.payment.models.PaymentStatus;
 import com.payment.errors.InvalidPaymentException;
+import com.payment.errors.PaymentAccessDeniedException;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.observability.CustomMetrics;
 import com.payment.repositories.PaymentRepository;
@@ -50,7 +51,6 @@ public class PaymentServiceTest {
   @BeforeEach
   void setUp() {
     validRequest = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("5000.00"),
         "MXN",
         "jersey-mikes",
@@ -67,7 +67,7 @@ public class PaymentServiceTest {
     when(paymentRepository.save(any())).thenReturn(savedPayment);
 
     // Act
-    var response = paymentService.createPayment(validRequest);
+    var response = paymentService.createPayment(validRequest, "user123");
 
     // Assert
     assertNotNull(response);
@@ -77,13 +77,45 @@ public class PaymentServiceTest {
   }
 
   @Test
+  void testCreatePaymentUsesAuthenticatedOwner() {
+    // Arrange
+    Payment savedPayment = new Payment();
+    savedPayment.setPaymentId("pay_123");
+    savedPayment.setStatus(PaymentStatus.PENDING);
+
+    when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    paymentService.createPayment(validRequest, "authenticated-user");
+
+    // Assert - the owner comes from the authenticated caller, never the request body
+    verify(paymentRepository).save(argThat(payment -> "authenticated-user".equals(payment.getUserId())));
+  }
+
+  @Test
   void testGetPaymentNotFound() {
     // Arrange
     when(paymentRepository.findByPaymentId("invalid")).thenReturn(Optional.empty());
 
     // Act & Assert
     assertThrows(PaymentNotFoundException.class, () -> {
-      paymentService.getPayment("invalid");
+      paymentService.getPayment("invalid", "user123");
+    });
+  }
+
+  @Test
+  void testGetPaymentDeniedForDifferentUser() {
+    // Arrange
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setUserId("owner");
+    payment.setStatus(PaymentStatus.COMPLETED);
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+
+    // Act & Assert
+    assertThrows(PaymentAccessDeniedException.class, () -> {
+      paymentService.getPayment("pay_123", "someone-else");
     });
   }
 
@@ -92,13 +124,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.PENDING);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
     when(paymentRepository.save(any())).thenReturn(payment);
 
     // Act
-    var response = paymentService.confirmPayment("pay_123");
+    var response = paymentService.confirmPayment("pay_123", "user123");
 
     // Assert
     assertNotNull(response);
@@ -113,8 +146,25 @@ public class PaymentServiceTest {
 
     // Act & Assert
     assertThrows(PaymentNotFoundException.class, () -> {
-      paymentService.confirmPayment("invalid");
+      paymentService.confirmPayment("invalid", "user123");
     });
+  }
+
+  @Test
+  void testConfirmPaymentDeniedForDifferentUser() {
+    // Arrange
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setUserId("owner");
+    payment.setStatus(PaymentStatus.PENDING);
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+
+    // Act & Assert
+    assertThrows(PaymentAccessDeniedException.class, () -> {
+      paymentService.confirmPayment("pay_123", "someone-else");
+    });
+    verify(paymentRepository, never()).save(any());
   }
 
   @Test
@@ -122,13 +172,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.COMPLETED);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.confirmPayment("pay_123");
+      paymentService.confirmPayment("pay_123", "user123");
     });
   }
 
@@ -137,13 +188,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.REFUNDED);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.confirmPayment("pay_123");
+      paymentService.confirmPayment("pay_123", "user123");
     });
   }
 
@@ -152,13 +204,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.COMPLETED);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
     when(paymentRepository.save(any())).thenReturn(payment);
 
     // Act
-    var response = paymentService.refundPayment("pay_123");
+    var response = paymentService.refundPayment("pay_123", "user123");
 
     // Assert
     assertNotNull(response);
@@ -173,8 +226,25 @@ public class PaymentServiceTest {
 
     // Act & Assert
     assertThrows(PaymentNotFoundException.class, () -> {
-      paymentService.refundPayment("invalid");
+      paymentService.refundPayment("invalid", "user123");
     });
+  }
+
+  @Test
+  void testRefundPaymentDeniedForDifferentUser() {
+    // Arrange
+    Payment payment = new Payment();
+    payment.setPaymentId("pay_123");
+    payment.setUserId("owner");
+    payment.setStatus(PaymentStatus.COMPLETED);
+
+    when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
+
+    // Act & Assert
+    assertThrows(PaymentAccessDeniedException.class, () -> {
+      paymentService.refundPayment("pay_123", "someone-else");
+    });
+    verify(paymentRepository, never()).save(any());
   }
 
   @Test
@@ -182,13 +252,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.PENDING);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.refundPayment("pay_123");
+      paymentService.refundPayment("pay_123", "user123");
     });
   }
 
@@ -197,13 +268,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.PROCESSING);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.refundPayment("pay_123");
+      paymentService.refundPayment("pay_123", "user123");
     });
   }
 
@@ -212,13 +284,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.REFUNDED);
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.refundPayment("pay_123");
+      paymentService.refundPayment("pay_123", "user123");
     });
   }
 
@@ -226,7 +299,6 @@ public class PaymentServiceTest {
   void testCreatePaymentValidationFails() {
     // Arrange
     CreatePaymentRequest invalidRequest = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("-100.00"),
         "USD",
         "merchant",
@@ -237,7 +309,7 @@ public class PaymentServiceTest {
 
     // Act & Assert
     assertThrows(InvalidPaymentException.class, () -> {
-      paymentService.createPayment(invalidRequest);
+      paymentService.createPayment(invalidRequest, "user123");
     });
   }
 
@@ -246,13 +318,14 @@ public class PaymentServiceTest {
     // Arrange
     Payment payment = new Payment();
     payment.setPaymentId("pay_123");
+    payment.setUserId("user123");
     payment.setStatus(PaymentStatus.COMPLETED);
     payment.setAmount(new BigDecimal("1000.00"));
 
     when(paymentRepository.findByPaymentId("pay_123")).thenReturn(Optional.of(payment));
 
     // Act
-    var response = paymentService.getPayment("pay_123");
+    var response = paymentService.getPayment("pay_123", "user123");
 
     // Assert
     assertNotNull(response);
@@ -265,7 +338,6 @@ public class PaymentServiceTest {
   void testCreatePaymentWithAllFields() {
     // Arrange
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user456",
         new BigDecimal("2500.50"),
         "EUR",
         "new-merchant",
@@ -280,7 +352,7 @@ public class PaymentServiceTest {
     when(paymentRepository.save(any())).thenReturn(savedPayment);
 
     // Act
-    var response = paymentService.createPayment(request);
+    var response = paymentService.createPayment(request, "user456");
 
     // Assert
     assertNotNull(response);

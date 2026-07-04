@@ -47,6 +47,18 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles PaymentAccessDeniedException.
+   *
+   * @param ex the payment access denied exception
+   * @return ResponseEntity with HTTP 403 (Forbidden) status and error details
+   */
+  @ExceptionHandler(PaymentAccessDeniedException.class)
+  public ResponseEntity<Map<String, Object>> handlePaymentAccessDenied(PaymentAccessDeniedException ex) {
+    log.warn("Payment access denied: {}", ex.getMessage());
+    return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+  }
+
+  /**
    * Handles InvalidCredentialsException.
    *
    * @param ex the invalid credentials exception

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.payment.contracts.CreatePaymentRequest;
 import com.payment.contracts.PaymentResponse;
 import com.payment.errors.InvalidPaymentException;
+import com.payment.errors.PaymentAccessDeniedException;
 import com.payment.errors.PaymentNotFoundException;
 import com.payment.events.PaymentInitiatedEvent;
 import com.payment.kafka.PaymentProducer;
@@ -52,15 +53,17 @@ public class PaymentService {
    * <p>
    * Validates the request, creates a new Payment entity with PENDING status,
    * persists it to
-   * the database, and returns the response.
+   * the database, and returns the response. The payment owner is the authenticated caller, not a
+   * client-supplied value, so a user can never create a payment attributed to someone else.
    *
    * @param request the payment creation request
+   * @param ownerId the authenticated caller's user ID, taken from the JWT
    * @return the created payment response
    * @throws InvalidPaymentException if the request fails validation
    */
   @Transactional
-  public PaymentResponse createPayment(CreatePaymentRequest request) {
-    log.info("Creating payment for user: {}, amount: {}", request.userId(), request.amount());
+  public PaymentResponse createPayment(CreatePaymentRequest request, String ownerId) {
+    log.info("Creating payment for user: {}, amount: {}", ownerId, request.amount());
 
     Timer.Sample sample = customMetrics.startPaymentProcessing();
 
@@ -70,7 +73,7 @@ public class PaymentService {
 
       // Create entity
       Payment payment = new Payment();
-      payment.setUserId(request.userId());
+      payment.setUserId(ownerId);
       payment.setAmount(request.amount());
       payment.setCurrency(request.currency());
       payment.setMerchant(request.merchant());
@@ -106,15 +109,19 @@ public class PaymentService {
    * Retrieves a payment by its unique identifier.
    *
    * @param paymentId the payment ID
+   * @param requesterId the authenticated caller's user ID, taken from the JWT
    * @return the payment response
    * @throws PaymentNotFoundException if the payment does not exist
+   * @throws PaymentAccessDeniedException if the payment belongs to a different user
    */
   @Transactional(readOnly = true)
-  public PaymentResponse getPayment(String paymentId) {
+  public PaymentResponse getPayment(String paymentId, String requesterId) {
     log.debug("Fetching payment: {}", paymentId);
 
     Payment payment = paymentRepository.findByPaymentId(paymentId)
         .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + paymentId));
+
+    requireOwner(payment, requesterId);
 
     return mapToResponse(payment);
   }
@@ -128,16 +135,20 @@ public class PaymentService {
    * completion timestamp.
    *
    * @param paymentId the payment ID
+   * @param requesterId the authenticated caller's user ID, taken from the JWT
    * @return the confirmed payment response
    * @throws PaymentNotFoundException if the payment does not exist
+   * @throws PaymentAccessDeniedException if the payment belongs to a different user
    * @throws InvalidPaymentException  if the payment is not in PENDING status
    */
   @Transactional
-  public PaymentResponse confirmPayment(String paymentId) {
+  public PaymentResponse confirmPayment(String paymentId, String requesterId) {
     log.info("Confirming payment: {}", paymentId);
 
     Payment payment = paymentRepository.findByPaymentId(paymentId)
         .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + paymentId));
+
+    requireOwner(payment, requesterId);
 
     if (payment.getStatus() != PaymentStatus.PENDING) {
       throw new InvalidPaymentException("Only PENDING payments can be confirmed");
@@ -163,16 +174,20 @@ public class PaymentService {
    * Transitions the payment status from COMPLETED to REFUNDED.
    *
    * @param paymentId the payment ID
+   * @param requesterId the authenticated caller's user ID, taken from the JWT
    * @return the refunded payment response
    * @throws PaymentNotFoundException if the payment does not exist
+   * @throws PaymentAccessDeniedException if the payment belongs to a different user
    * @throws InvalidPaymentException  if the payment is not in COMPLETED status
    */
   @Transactional
-  public PaymentResponse refundPayment(String paymentId) {
+  public PaymentResponse refundPayment(String paymentId, String requesterId) {
     log.info("Refunding payment: {}", paymentId);
 
     Payment payment = paymentRepository.findByPaymentId(paymentId)
         .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + paymentId));
+
+    requireOwner(payment, requesterId);
 
     if (payment.getStatus() != PaymentStatus.COMPLETED) {
       throw new InvalidPaymentException("Only COMPLETED payments can be refunded");
@@ -267,6 +282,19 @@ public class PaymentService {
    */
   boolean callExternalProcessor(Payment payment) {
     return Math.random() < 0.9;
+  }
+
+  /**
+   * Rejects access to a payment owned by someone other than the requester.
+   *
+   * @param payment the payment being accessed
+   * @param requesterId the authenticated caller's user ID, taken from the JWT
+   * @throws PaymentAccessDeniedException if the payment does not belong to the requester
+   */
+  private void requireOwner(Payment payment, String requesterId) {
+    if (!payment.getUserId().equals(requesterId)) {
+      throw new PaymentAccessDeniedException("Payment does not belong to the authenticated user");
+    }
   }
 
   /**

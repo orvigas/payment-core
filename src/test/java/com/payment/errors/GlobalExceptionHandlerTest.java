@@ -170,6 +170,37 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void testHandlePaymentAccessDenied() {
+    PaymentAccessDeniedException exception =
+        new PaymentAccessDeniedException("Payment does not belong to the authenticated user");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handlePaymentAccessDenied(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    assertNotNull(body);
+    assertEquals(403, body.get("status"));
+    assertEquals("Forbidden", body.get("error"));
+    assertEquals("Payment does not belong to the authenticated user", body.get("message"));
+    assertNotNull(body.get("timestamp"));
+  }
+
+  @Test
+  void testPaymentAccessDeniedResponseStructure() {
+    PaymentAccessDeniedException exception = new PaymentAccessDeniedException("Access denied");
+
+    ResponseEntity<Map<String, Object>> response = exceptionHandler.handlePaymentAccessDenied(exception);
+    Map<String, Object> body = response.getBody();
+
+    assertNotNull(body);
+    assertEquals(4, body.size());
+    assertTrue(body.containsKey("timestamp"));
+    assertTrue(body.containsKey("status"));
+    assertTrue(body.containsKey("error"));
+    assertTrue(body.containsKey("message"));
+  }
+
+  @Test
   void testHandleInvalidCredentials() {
     InvalidCredentialsException exception = new InvalidCredentialsException("Invalid username or password");
 

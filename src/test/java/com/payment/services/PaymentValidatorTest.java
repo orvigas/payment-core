@@ -20,7 +20,6 @@ class PaymentValidatorTest {
   @Test
   void testValidCreatePaymentRequest() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "USD",
         "merchant",
@@ -33,7 +32,6 @@ class PaymentValidatorTest {
   @Test
   void testValidCreatePaymentRequestWithoutDescription() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "USD",
         "merchant",
@@ -51,41 +49,8 @@ class PaymentValidatorTest {
   }
 
   @Test
-  void testNullUserId() {
-    CreatePaymentRequest request = new CreatePaymentRequest(
-        null,
-        new BigDecimal("100.50"),
-        "USD",
-        "merchant",
-        "description"
-    );
-
-    InvalidPaymentException exception = assertThrows(InvalidPaymentException.class, () -> {
-      validator.validateCreatePaymentRequest(request);
-    });
-    assertTrue(exception.getMessage().contains("User ID"));
-  }
-
-  @Test
-  void testBlankUserId() {
-    CreatePaymentRequest request = new CreatePaymentRequest(
-        "  ",
-        new BigDecimal("100.50"),
-        "USD",
-        "merchant",
-        "description"
-    );
-
-    InvalidPaymentException exception = assertThrows(InvalidPaymentException.class, () -> {
-      validator.validateCreatePaymentRequest(request);
-    });
-    assertTrue(exception.getMessage().contains("User ID"));
-  }
-
-  @Test
   void testNullAmount() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         null,
         "USD",
         "merchant",
@@ -101,7 +66,6 @@ class PaymentValidatorTest {
   @Test
   void testAmountTooSmall() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("0.00"),
         "USD",
         "merchant",
@@ -117,7 +81,6 @@ class PaymentValidatorTest {
   @Test
   void testAmountAtMinBoundary() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("0.01"),
         "USD",
         "merchant",
@@ -130,7 +93,6 @@ class PaymentValidatorTest {
   @Test
   void testAmountTooLarge() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("1000000000.00"),
         "USD",
         "merchant",
@@ -146,7 +108,6 @@ class PaymentValidatorTest {
   @Test
   void testAmountAtMaxBoundary() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("999999999.99"),
         "USD",
         "merchant",
@@ -159,7 +120,6 @@ class PaymentValidatorTest {
   @Test
   void testNullCurrency() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         null,
         "merchant",
@@ -175,7 +135,6 @@ class PaymentValidatorTest {
   @Test
   void testInvalidCurrencyTooShort() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "US",
         "merchant",
@@ -191,7 +150,6 @@ class PaymentValidatorTest {
   @Test
   void testInvalidCurrencyTooLong() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "USDA",
         "merchant",
@@ -207,7 +165,6 @@ class PaymentValidatorTest {
   @Test
   void testInvalidCurrencyWithLowercase() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "usd",
         "merchant",
@@ -223,7 +180,6 @@ class PaymentValidatorTest {
   @Test
   void testInvalidCurrencyWithNumbers() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "US1",
         "merchant",
@@ -242,7 +198,6 @@ class PaymentValidatorTest {
 
     for (String currency : validCurrencies) {
       CreatePaymentRequest request = new CreatePaymentRequest(
-          "user123",
           new BigDecimal("100.50"),
           currency,
           "merchant",
@@ -255,7 +210,6 @@ class PaymentValidatorTest {
   @Test
   void testNullMerchant() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "USD",
         null,
@@ -271,7 +225,6 @@ class PaymentValidatorTest {
   @Test
   void testBlankMerchant() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user123",
         new BigDecimal("100.50"),
         "USD",
         "   ",

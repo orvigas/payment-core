@@ -173,7 +173,6 @@ collection:
       mimeType: application/json
       text: |-
         {
-          "userId": "user_123",
           "amount": 5000.00,
           "currency": "MXN",
           "merchant": "jersey-mikes",
@@ -205,7 +204,6 @@ collection:
       mimeType: application/json
       text: |-
         {
-          "userId": "user_456",
           "amount": 2500.50,
           "currency": "USD",
           "merchant": "starbucks",
@@ -237,7 +235,6 @@ collection:
       mimeType: application/json
       text: |-
         {
-          "userId": "user_invalid",
           "amount": -100.00,
           "currency": "MXN",
           "merchant": "invalid-merchant",

@@ -27,7 +27,7 @@ The synchronous path (create, get, confirm, refund) is a classic layered design:
 
 ### Controllers (`com.payment.controllers`)
 
-- `PaymentController` serves `/api/v1/payments`: create, get by ID, confirm, refund. Payment creation is guarded by the `payment-creation` rate limiter with a fallback that translates `RequestNotPermitted` into a 429. The fallback deliberately matches only that exception so real failures (for example a database error) still surface as errors instead of a false 429.
+- `PaymentController` serves `/api/v1/payments`: create, get by ID, confirm, refund. Every method takes the authenticated `Authentication` principal and passes its name (the JWT subject) to the service as the payment owner or requester — never a client-supplied value — so ownership can be enforced in one place. Payment creation is guarded by the `payment-creation` rate limiter with a fallback that translates `RequestNotPermitted` into a 429. The fallback deliberately matches only that exception so real failures (for example a database error) still surface as errors instead of a false 429.
 - `AuthController` serves `/api/v1/auth`: login and token refresh. Login delegates to Spring Security's `AuthenticationManager` rather than comparing password hashes itself.
 
 Controllers hold no business logic. They validate input via Jakarta Bean Validation, call the service, and map results to HTTP responses. Every endpoint carries OpenAPI annotations; Swagger UI is available at `/swagger-ui.html`.
@@ -76,6 +76,7 @@ PENDING -> PROCESSING -> COMPLETED -> REFUNDED
 ```
 
 - `confirmPayment` only accepts `PENDING` payments; `refundPayment` only accepts `COMPLETED` ones. Invalid transitions throw `InvalidPaymentException` (HTTP 400).
+- Every read or transition first checks that the caller owns the payment, throwing `PaymentAccessDeniedException` (HTTP 403) otherwise. See [SECURITY.md](SECURITY.md) for the full ownership model.
 - `FAILED` and `REFUNDED` are terminal.
 - The charging consumer also drives `PENDING -> PROCESSING -> COMPLETED/FAILED` asynchronously when it processes a `PaymentInitiatedEvent`.
 
@@ -105,7 +106,7 @@ Events are immutable Java Records serialized as JSON (`JsonSerializer` on the pr
 
 ## Database Schema Management
 
-Flyway owns the schema; Hibernate runs with `ddl-auto: validate` and only checks that entity mappings match what the migrations created, failing fast on drift instead of silently altering tables. Migrations V001 through V007 live in `src/main/resources/db/migration/` and are never edited after they have run — Flyway tracks checksums, so a modified migration breaks startup. Schema changes always mean a new `Vnnn__description.sql` file.
+Flyway owns the schema; Hibernate runs with `ddl-auto: validate` and only checks that entity mappings match what the migrations created, failing fast on drift instead of silently altering tables. Migrations V001 through V008 live in `src/main/resources/db/migration/` and are never edited after they have run — Flyway tracks checksums, so a modified migration breaks startup. Schema changes always mean a new `Vnnn__description.sql` file.
 
 For local development, `app.database.reset-on-startup` (default `true`) makes Flyway clean and re-migrate on every boot so the local schema can never drift from what is checked in. The operational implications of this flag are covered in [DEPLOYMENT.md](DEPLOYMENT.md).
 

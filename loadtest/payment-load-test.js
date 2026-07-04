@@ -39,8 +39,8 @@ export function setup() {
 
 export default function (data) {
   group('Create Payment with Auth', () => {
+    // The payment owner is derived from the JWT (load_test_user), not a request field.
     const payload = {
-      userId: `user_${__VU}`,
       amount: 50.00,
       currency: 'MXN',
       merchant: 'load_test',

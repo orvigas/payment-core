@@ -42,7 +42,6 @@ public class KafkaEndToEndTest {
   @Test
   void testEndToEndPaymentCreation() {
     CreatePaymentRequest request = new CreatePaymentRequest(
-        "user_e2e_123",
         new BigDecimal("5000.00"),
         "MXN",
         "test-merchant",
@@ -50,7 +49,7 @@ public class KafkaEndToEndTest {
     );
 
     // Create payment
-    var response = paymentService.createPayment(request);
+    var response = paymentService.createPayment(request, "user_e2e_123");
 
     assertNotNull(response);
     assertEquals(PaymentStatus.PENDING, response.status());
@@ -78,14 +77,13 @@ public class KafkaEndToEndTest {
   void testMultiplePaymentCreations() {
     for (int i = 0; i < 3; i++) {
       CreatePaymentRequest request = new CreatePaymentRequest(
-          "user_multi_" + i,
           new BigDecimal("1000.00"),
           "USD",
           "merchant",
           "Batch test " + i
       );
 
-      var response = paymentService.createPayment(request);
+      var response = paymentService.createPayment(request, "user_multi_" + i);
       assertNotNull(response);
       assertEquals(PaymentStatus.PENDING, response.status());
     }
@@ -96,18 +94,17 @@ public class KafkaEndToEndTest {
   @Test
   void testPaymentConfirmation() {
     CreatePaymentRequest createRequest = new CreatePaymentRequest(
-        "user_confirm",
         new BigDecimal("2500.00"),
         "USD",
         "test-merchant",
         "Confirmation test"
     );
 
-    var created = paymentService.createPayment(createRequest);
+    var created = paymentService.createPayment(createRequest, "user_confirm");
     assertNotNull(created);
 
     // Confirm payment
-    var confirmed = paymentService.confirmPayment(created.paymentId());
+    var confirmed = paymentService.confirmPayment(created.paymentId(), "user_confirm");
     assertNotNull(confirmed);
     assertEquals(created.paymentId(), confirmed.paymentId());
 
@@ -117,20 +114,19 @@ public class KafkaEndToEndTest {
   @Test
   void testPaymentRefund() {
     CreatePaymentRequest createRequest = new CreatePaymentRequest(
-        "user_refund",
         new BigDecimal("3000.00"),
         "MXN",
         "test-merchant",
         "Refund test"
     );
 
-    var created = paymentService.createPayment(createRequest);
+    var created = paymentService.createPayment(createRequest, "user_refund");
 
     // Confirm first
-    paymentService.confirmPayment(created.paymentId());
+    paymentService.confirmPayment(created.paymentId(), "user_refund");
 
     // Refund
-    var refunded = paymentService.refundPayment(created.paymentId());
+    var refunded = paymentService.refundPayment(created.paymentId(), "user_refund");
     assertNotNull(refunded);
     assertEquals(PaymentStatus.REFUNDED, refunded.status());
 

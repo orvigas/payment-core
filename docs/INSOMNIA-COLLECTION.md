@@ -99,10 +99,9 @@ Payment Core API
 #### Create Payment
 - **Method:** POST
 - **URL:** `/api/v1/payments`
-- **Request Body:**
+- **Request Body:** the owner is taken from the JWT, not the body
   ```json
   {
-    "userId": "user_123",
     "amount": 5000.00,
     "currency": "MXN",
     "merchant": "jersey-mikes",
@@ -122,21 +121,21 @@ Payment Core API
 - **URL:** `/api/v1/payments/{paymentId}`
 - **Path Variables:** `{{ payment_id }}` (automatically set after create)
 - **Success Response:** 200 OK with payment details
-- **Error Response:** 404 Not Found
+- **Error Response:** 404 Not Found, or 403 Forbidden if the payment belongs to a different user
 
 #### Confirm Payment
 - **Method:** POST
 - **URL:** `/api/v1/payments/{paymentId}/confirm`
 - **Path Variables:** `{{ payment_id }}`
 - **Success Response:** 200 OK with confirmation
-- **Error Response:** 404 Not Found
+- **Error Response:** 404 Not Found, or 403 Forbidden if the payment belongs to a different user
 
 #### Refund Payment
 - **Method:** POST
 - **URL:** `/api/v1/payments/{paymentId}/refund`
 - **Path Variables:** `{{ payment_id }}`
 - **Success Response:** 200 OK with refund details
-- **Error Response:** 404 Not Found
+- **Error Response:** 404 Not Found, or 403 Forbidden if the payment belongs to a different user
 
 ## Using Environment Variables
 

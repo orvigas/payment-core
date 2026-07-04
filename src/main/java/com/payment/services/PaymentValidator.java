@@ -28,7 +28,6 @@ public class PaymentValidator {
    * <p>Checks that:
    * <ul>
    *   <li>Request is not null
-   *   <li>User ID is provided and not blank
    *   <li>Amount is provided and within valid range [0.01, 999,999,999.99]
    *   <li>Currency is a valid 3-letter ISO code
    *   <li>Merchant is provided and not blank
@@ -40,10 +39,6 @@ public class PaymentValidator {
   public void validateCreatePaymentRequest(CreatePaymentRequest request) {
     if (request == null) {
       throw new InvalidPaymentException("Request cannot be null");
-    }
-
-    if (request.userId() == null || request.userId().isBlank()) {
-      throw new InvalidPaymentException("User ID is required");
     }
 
     if (request.amount() == null) {
