@@ -14,6 +14,9 @@ import io.github.resilience4j.retry.RetryRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
+import io.github.resilience4j.micrometer.tagged.TaggedRetryMetrics;
+import io.github.resilience4j.micrometer.tagged.TaggedTimeLimiterMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -206,5 +209,53 @@ public class ResilienceConfig {
   public MeterRegistry meterRegistry() {
     return new PrometheusMeterRegistry(
         PrometheusConfig.DEFAULT);
+  }
+
+  /**
+   * Binds circuit breaker state and call outcome metrics to the meter registry.
+   *
+   * <p>The registries here are created manually rather than through Resilience4j's Spring
+   * Boot autoconfiguration, so metrics have to be bound explicitly too - autoconfiguration
+   * only wires metrics for the registry beans it creates itself.
+   *
+   * @param registry the circuit breaker registry
+   * @param meterRegistry the meter registry metrics are exported through
+   * @return the bound metrics binder
+   */
+  @Bean
+  public TaggedCircuitBreakerMetrics circuitBreakerMetricsBinder(
+      CircuitBreakerRegistry registry, MeterRegistry meterRegistry) {
+    TaggedCircuitBreakerMetrics metrics = TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry);
+    metrics.bindTo(meterRegistry);
+    return metrics;
+  }
+
+  /**
+   * Binds retry attempt and outcome metrics to the meter registry.
+   *
+   * @param registry the retry registry
+   * @param meterRegistry the meter registry metrics are exported through
+   * @return the bound metrics binder
+   */
+  @Bean
+  public TaggedRetryMetrics retryMetricsBinder(RetryRegistry registry, MeterRegistry meterRegistry) {
+    TaggedRetryMetrics metrics = TaggedRetryMetrics.ofRetryRegistry(registry);
+    metrics.bindTo(meterRegistry);
+    return metrics;
+  }
+
+  /**
+   * Binds time limiter timeout/success metrics to the meter registry.
+   *
+   * @param registry the time limiter registry
+   * @param meterRegistry the meter registry metrics are exported through
+   * @return the bound metrics binder
+   */
+  @Bean
+  public TaggedTimeLimiterMetrics timeLimiterMetricsBinder(
+      TimeLimiterRegistry registry, MeterRegistry meterRegistry) {
+    TaggedTimeLimiterMetrics metrics = TaggedTimeLimiterMetrics.ofTimeLimiterRegistry(registry);
+    metrics.bindTo(meterRegistry);
+    return metrics;
   }
 }

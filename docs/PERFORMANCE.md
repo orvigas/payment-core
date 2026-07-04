@@ -73,6 +73,7 @@ Run a baseline before the change and the same scenario after it, on the same mac
 ## Measuring
 
 - **Prometheus** (`http://localhost:9090`) scrapes `/actuator/prometheus` every 15 s. The custom metrics that matter for latency work: `payment.processing.duration` and `charge.processing.duration` (both publish P50/P95/P99), plus the `payment.*` and `charge.*` counters for throughput and failure rates.
+- **Resilience4j metrics** (`resilience4j_circuitbreaker_state`, `resilience4j_circuitbreaker_failure_rate`, `resilience4j_retry_calls_total`, `resilience4j_ratelimiter_available_permissions`, `resilience4j_timelimiter_calls_total`) show the actual behavior of the thresholds in the table above — e.g. whether `payment-creation` is close to exhausting its 100/hour budget, or whether `charger-service` is tripping open. The registries in `ResilienceConfig`/`RateLimitingConfig` are created manually rather than through Spring Boot's Resilience4j autoconfiguration, so their metrics are bound explicitly via `Tagged*Metrics.bindTo(meterRegistry)` rather than appearing for free.
 - **Jaeger** (`http://localhost:16686`) shows where time goes inside a request; use it before guessing at a bottleneck. Sampling is 100% locally, which is itself a cost — reduce `management.tracing.sampling.probability` in production.
 - **Consumer lag** is the early warning for the async path: payments stuck in `PENDING`/`PROCESSING` usually mean lagging consumers, not a slow API.
 

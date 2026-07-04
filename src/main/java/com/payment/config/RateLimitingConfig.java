@@ -1,8 +1,10 @@
 package com.payment.config;
 
+import io.github.resilience4j.micrometer.tagged.TaggedRateLimiterMetrics;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterConfig;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -63,5 +65,25 @@ public class RateLimitingConfig {
             .build();
 
         return registry.rateLimiter("login", config);
+    }
+
+    /**
+     * Binds rate limiter permit/wait/rejection metrics to the meter registry.
+     *
+     * <p>The registry above is created manually rather than through Resilience4j's Spring
+     * Boot autoconfiguration, so metrics have to be bound explicitly too - autoconfiguration
+     * only wires metrics for the registry beans it creates itself.
+     *
+     * @param registry the rate limiter registry
+     * @param meterRegistry the meter registry metrics are exported through (defined in
+     *        {@link ResilienceConfig})
+     * @return the bound metrics binder
+     */
+    @Bean
+    public TaggedRateLimiterMetrics rateLimiterMetricsBinder(
+            RateLimiterRegistry registry, MeterRegistry meterRegistry) {
+        TaggedRateLimiterMetrics metrics = TaggedRateLimiterMetrics.ofRateLimiterRegistry(registry);
+        metrics.bindTo(meterRegistry);
+        return metrics;
     }
 }
