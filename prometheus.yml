@@ -8,3 +8,23 @@ scrape_configs:
       - targets: ["payment-core:8080"]
     metrics_path: "/actuator/prometheus"
     scrape_interval: 15s
+
+  # Jaeger's own internal operational metrics (spans received/saved, queue
+  # depth, etc.) - exposed on the admin port by default, just never scraped
+  # before this. Distinct from the Service Performance Monitor metrics below,
+  # which are derived from span content rather than Jaeger's own operation.
+  - job_name: "jaeger"
+    static_configs:
+      - targets: ["jaeger:14269"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+
+  # RED metrics derived from spans by otel-collector's spanmetrics connector.
+  # This is what powers the Jaeger UI's Monitor tab (see METRICS_STORAGE_TYPE
+  # and PROMETHEUS_SERVER_URL on the jaeger service in docker-compose.yml) and
+  # the Jaeger SPM dashboard in Grafana.
+  - job_name: "otel-collector-spanmetrics"
+    static_configs:
+      - targets: ["otel-collector:8889"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s

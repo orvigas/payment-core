@@ -1,0 +1,145 @@
+{
+  "title": "Jaeger - Service Performance Monitor",
+  "uid": "jaeger-spm",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "tags": ["payment-core", "jaeger"],
+  "templating": {
+    "list": [
+      {
+        "name": "operation",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(traces_span_metrics_calls_total, span_name)", "refId": "operation" },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Span-Derived RED Metrics (SPM)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 10, "type": "stat", "title": "Total Request Rate", "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Derived from spans by otel-collector's spanmetrics connector, not from application metrics directly.",
+      "targets": [{ "expr": "sum(rate(traces_span_metrics_calls_total{span_name=~\"$operation\"}[5m]))", "legendFormat": "calls/s" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 3 }, "overrides": [] },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 11, "type": "stat", "title": "Error Rate", "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(traces_span_metrics_calls_total{span_name=~\"$operation\", status_code=\"STATUS_CODE_ERROR\"}[5m]))", "legendFormat": "errors/s" }],
+      "fieldConfig": { "defaults": {
+        "unit": "reqps", "decimals": 3,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.01 } ] }
+      }, "overrides": [] },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 12, "type": "stat", "title": "Distinct Operations Traced", "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "count(count by (span_name) (traces_span_metrics_calls_total))", "legendFormat": "operations" }],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "graphMode": "none", "colorMode": "value" }
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Request Rate by Operation", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{span_name=~\"$operation\"}[5m]))", "legendFormat": "{{span_name}}" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Duration by Operation (P50/P95/P99)", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Histogram buckets are in milliseconds (histogram.unit: ms in otel-collector-config.yaml).",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket{span_name=~\"$operation\"}[5m])))", "legendFormat": "{{span_name}} p50" },
+        { "expr": "histogram_quantile(0.95, sum by (span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket{span_name=~\"$operation\"}[5m])))", "legendFormat": "{{span_name}} p95" },
+        { "expr": "histogram_quantile(0.99, sum by (span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket{span_name=~\"$operation\"}[5m])))", "legendFormat": "{{span_name}} p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 2, "type": "row", "title": "Jaeger Collector Health", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 20, "type": "timeseries", "title": "Spans Received / Saved / Rejected / Dropped", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Jaeger's own internal operational counters - independent of the SPM metrics above, which are derived from span content rather than collector operation.",
+      "targets": [
+        { "expr": "sum(rate(jaeger_collector_spans_received_total[5m]))", "legendFormat": "received" },
+        { "expr": "sum(rate(jaeger_collector_spans_saved_by_svc_total[5m]))", "legendFormat": "saved" },
+        { "expr": "sum(rate(jaeger_collector_spans_rejected_total[5m]))", "legendFormat": "rejected" },
+        { "expr": "sum(rate(jaeger_collector_spans_dropped_total[5m]))", "legendFormat": "dropped" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "Collector Queue Length vs Capacity", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "jaeger_collector_queue_length", "legendFormat": "length" },
+        { "expr": "jaeger_collector_queue_capacity", "legendFormat": "capacity" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "Collector Save Latency (P95)", "gridPos": { "h": 7, "w": 12, "x": 0, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(jaeger_collector_save_latency_bucket[5m])))", "legendFormat": "p95" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 23, "type": "timeseries", "title": "Collector HTTP Requests / Errors", "gridPos": { "h": 7, "w": 12, "x": 12, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(jaeger_collector_http_server_requests_total[5m]))", "legendFormat": "requests/s" },
+        { "expr": "sum(rate(jaeger_collector_http_server_errors_total[5m]))", "legendFormat": "errors/s" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 3, "type": "row", "title": "Jaeger Storage", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 30, "type": "timeseries", "title": "Storage Request Rate", "gridPos": { "h": 7, "w": 12, "x": 0, "y": 30 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(jaeger_storage_requests_total[5m]))", "legendFormat": "requests/s" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 31, "type": "timeseries", "title": "Storage Latency (P95)", "gridPos": { "h": 7, "w": 12, "x": 12, "y": 30 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le) (rate(jaeger_storage_latency_bucket[5m])))", "legendFormat": "p95" }],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+
+    { "id": 4, "type": "row", "title": "Trace Exploration", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 }, "collapsed": false, "panels": [] },
+
+    {
+      "id": 40, "type": "text", "title": "Jump to Traces", "gridPos": { "h": 4, "w": 24, "x": 0, "y": 38 },
+      "options": {
+        "mode": "markdown",
+        "content": "These metrics are aggregates; use Jaeger directly to inspect the individual traces behind a spike:\n\n- [Open Jaeger Monitor tab](http://localhost:16686/monitor) - the same RED metrics as above, natively in Jaeger's own UI.\n- [Open Jaeger UI](http://localhost:16686) - search traces by service, operation, or time range.\n- [Explore in Grafana](/explore?left=%7B%22datasource%22:%22jaeger%22%7D) - query the Jaeger datasource without leaving Grafana."
+      }
+    }
+  ]
+}

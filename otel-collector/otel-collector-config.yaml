@@ -1,0 +1,46 @@
+# Sits between the app and Jaeger to derive Service Performance Monitor (RED)
+# metrics from spans, without changing how the app exports traces or how
+# Jaeger ingests them - both keep using the same Zipkin protocol as before.
+
+receivers:
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  batch:
+
+connectors:
+  # Consumes the same trace stream as the zipkin exporter below and emits
+  # request/error/duration metrics per service+operation, scraped by
+  # Prometheus via the prometheus exporter in the metrics pipeline.
+  spanmetrics:
+    namespace: traces.span.metrics
+    histogram:
+      unit: ms
+    metrics_flush_interval: 15s
+    dimensions:
+      - name: http.method
+      - name: http.status_code
+
+exporters:
+  # Forwards the original spans to Jaeger unchanged - same endpoint and
+  # format the app used to send directly.
+  zipkin:
+    endpoint: "http://jaeger:9411/api/v2/spans"
+    format: json
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+extensions:
+  health_check:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [zipkin]
+      processors: [batch]
+      exporters: [zipkin, spanmetrics]
+    metrics:
+      receivers: [spanmetrics]
+      exporters: [prometheus]

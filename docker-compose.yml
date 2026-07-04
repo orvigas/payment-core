@@ -83,6 +83,17 @@ services:
       # Without this, the all-in-one image never opens its Zipkin-compatible
       # HTTP collector, even though port 9411 is published below.
       COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+      # Service Performance Monitor (the Jaeger UI's Monitor tab): reads RED
+      # metrics derived from spans by otel-collector's spanmetrics connector,
+      # not from Jaeger's own trace storage. The normalize flags account for
+      # the _total/_bucket suffixes the collector's prometheus exporter adds.
+      METRICS_STORAGE_TYPE: prometheus
+      PROMETHEUS_SERVER_URL: http://prometheus:9090
+      PROMETHEUS_QUERY_NORMALIZE_CALLS: "true"
+      PROMETHEUS_QUERY_NORMALIZE_DURATION: "true"
+    depends_on:
+      prometheus:
+        condition: service_healthy
     ports:
       - "5775:5775/udp"
       - "6831:6831/udp"
@@ -101,6 +112,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  # Sits between the app and Jaeger: forwards spans unchanged (same Zipkin
+  # protocol/endpoint the app already used) while also deriving Service
+  # Performance Monitor metrics from them via the spanmetrics connector.
+  #
+  # No healthcheck: the contrib image ships only the otelcol-contrib binary,
+  # with no shell and no wget/curl, so there is nothing a container-exec
+  # HEALTHCHECK could run. Dependents use `service_started` instead - the
+  # collector reaches its "Everything is ready" state within about a second
+  # of starting, well before anything downstream needs it.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: payment-otel-collector
+    volumes:
+      - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "8889:8889" # spanmetrics connector's Prometheus exporter (scraped below)
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    networks:
+      - payment-network
 
   # Dashboards and datasources are auto-provisioned from ./grafana on startup -
   # nothing to import by hand after `docker-compose up`.
@@ -148,7 +181,10 @@ services:
       # Hardcoded for the same reason as SPRING_KAFKA_BOOTSTRAP_SERVERS above. This is
       # also the property Micrometer Tracing's Zipkin reporter actually binds to;
       # SPRING_ZIPKIN_BASE_URL (the old Sleuth-era name) has no effect on this stack.
-      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://jaeger:9411/api/v2/spans
+      # Points at otel-collector rather than jaeger directly so spans also get
+      # aggregated into Service Performance Monitor metrics; otel-collector
+      # forwards the same spans on to Jaeger unchanged.
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://otel-collector:9411/api/v2/spans
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: ${MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED:-true}
     ports:
       - "8080:8080"
@@ -162,6 +198,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - payment-network
     healthcheck:
