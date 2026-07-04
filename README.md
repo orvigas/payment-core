@@ -28,7 +28,7 @@ A payment processing service built with Spring Boot 3, PostgreSQL, and Apache Ka
 - Resilience patterns: circuit breakers, retries, timeouts (Resilience4j)
 - Observability: Prometheus metrics, Jaeger distributed tracing, custom Micrometer metrics
 - Interactive API documentation with Swagger UI / OpenAPI 3.1
-- About 250 unit and integration tests; the build enforces a 95% instruction coverage minimum (JaCoCo)
+- About 260 unit and integration tests; the build enforces a 95% instruction coverage minimum (JaCoCo)
 - k6 load testing suite with seeded credentials and baseline analysis
 
 ## Tech Stack
@@ -188,7 +188,7 @@ src/main/resources/
 ├── application.yml
 └── db/migration/    # Flyway V001__initial_schema.sql ... V008__add_payments_user_fk.sql
 
-src/test/java/com/payment/   # ~250 tests: controllers, security, services, kafka, config,
+src/test/java/com/payment/   # ~260 tests: controllers, security, services, kafka, config,
                              # errors, events, models, observability, resilience
 loadtest/                    # k6 scripts, seed SQL, scenarios, baseline results
 docs/                        # Architecture, deployment, performance, and security docs

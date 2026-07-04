@@ -172,8 +172,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       # Hardcoded rather than sourced from .env: this hostname only resolves inside the
-      # Docker network. springboot3-dotenv loads .env into every Spring Boot process,
-      # including `mvn test` on the host, so putting it in .env breaks tests instead.
+      # Docker network. If .env were ever sourced into a shell running `mvn test` on the
+      # host (see docs/DEPLOYMENT.md), this would break Kafka client construction with an
+      # unresolvable bootstrap URL - keep it out of .env regardless of how it's loaded.
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
