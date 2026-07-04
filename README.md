@@ -196,15 +196,16 @@ docs/                        # Architecture, deployment, performance, and securi
 
 ## Configuration
 
-Configuration lives in `application.yml` and is overridden via environment variables. The important ones:
+Copy `.env.example` to `.env` and adjust as needed. Docker Compose reads it automatically and passes the values into containers as real environment variables; for non-Docker runs (`mvn spring-boot:run`, k6), export it into your shell first: `set -a; source .env; set +a`. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full workflow.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `POSTGRES_DB` / `_USER` / `_PASSWORD` | `payment_db` / `postgres` / `postgres` | Database name and credentials, reused for the datasource connection and the seed job. |
 | `JWT_SECRET` | insecure placeholder | JWT signing key; at least 32 characters. Must be set in any shared environment. |
 | `JWT_EXPIRATION` | `3600000` | Access token lifetime (ms); refresh tokens live 7x longer. |
 | `DB_RESET_ON_STARTUP` | `true` | Flyway cleans and re-migrates on every boot. Set `false` to keep data across restarts. |
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | localhost Postgres | Database connection. |
-| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka brokers. |
+
+Kafka and Jaeger endpoints are set directly in `docker-compose.yml`, not through `.env` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for why.
 
 ### Database
 

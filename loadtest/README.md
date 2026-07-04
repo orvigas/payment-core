@@ -96,6 +96,13 @@ BASE_URL=http://api.example.com k6 run payment-load-test.js
 BASE_URL=http://localhost:8080 k6 run payment-load-test.js
 ```
 
+`BASE_URL`, `LOAD_TEST_USERNAME`, and `LOAD_TEST_PASSWORD` are also documented in the project's `.env.example` for consistency, but k6 does not read `.env` files natively. To reuse the same values, export them into your shell first:
+
+```bash
+set -a; source ../.env; set +a
+k6 run payment-load-test.js
+```
+
 ### Output Formats
 
 ```bash

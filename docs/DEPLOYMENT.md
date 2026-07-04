@@ -18,6 +18,24 @@ The Dockerfile is a two-stage build: a Maven/Corretto builder stage that caches 
 
 The runtime entrypoint currently starts the JVM with the JDWP debug agent listening on port 5005. This is convenient for attaching a debugger to the container but must be removed for any non-local deployment; see the production checklist.
 
+## Configuration via .env
+
+Copy `.env.example` to `.env` and adjust values as needed:
+
+```bash
+cp .env.example .env
+```
+
+`.env` is gitignored. Docker Compose auto-loads a root-level `.env` for `${VAR}` substitution inside `docker-compose.yml` — no extra flag needed — and passes the resolved values into containers as real environment variables, which Spring Boot reads natively (no library involved).
+
+Neither the app nor k6 reads `.env` automatically when run outside Docker (`mvn spring-boot:run`, `java -jar`, or the k6 scripts standalone). Export it into your shell first:
+
+```bash
+set -a; source .env; set +a
+```
+
+The checked-in `.env.example` defaults match what used to be hardcoded in `docker-compose.yml` and `application.yml` — dev-only placeholders, not real secrets (see [SECURITY.md](SECURITY.md)).
+
 ## Running with Docker Compose
 
 ```bash
@@ -54,16 +72,17 @@ The seed job waits on the application rather than on Postgres because the app's 
 
 ## Configuration
 
-Configuration lives in `src/main/resources/application.yml` and is overridden through environment variables. The compose file already overrides the datasource, Kafka, and tracing endpoints to point at the container network.
+Configuration lives in `src/main/resources/application.yml` and is overridden through environment variables, sourced from `.env` (see above). The compose file derives the datasource from the same variables so both containers and the app agree on their values.
 
 | Variable | Default | Notes |
 |---|---|---|
+| `POSTGRES_DB` / `_USER` / `_PASSWORD` | `payment_db` / `postgres` / `postgres` | Also used to build `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD` and the `db-seed` job's `PGPASSWORD`, so the credential is set in one place. |
 | `JWT_SECRET` | insecure placeholder | Must be set to a random value of at least 32 characters in any shared environment. See [SECURITY.md](SECURITY.md). |
 | `JWT_EXPIRATION` | `3600000` (1 h) | Access token lifetime in milliseconds; refresh tokens live 7x longer. |
 | `DB_RESET_ON_STARTUP` | `true` | Flyway cleans and re-migrates the schema on every boot. Set to `false` to keep data across restarts. |
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | localhost Postgres | Database connection. |
-| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka brokers. |
-| `SPRING_ZIPKIN_BASE_URL` | `http://localhost:9411` | Jaeger collector (Zipkin protocol). |
+| `MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED` | `true` | Enables the `/actuator/prometheus` exporter. |
+
+`SPRING_KAFKA_BOOTSTRAP_SERVERS` (`kafka:9092`) and `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` (`http://jaeger:9411/api/v2/spans`) are set directly in `docker-compose.yml` rather than through `.env`. Both are Docker-network-only hostnames that would break Kafka client construction with unresolvable bootstrap URLs if `.env` were ever sourced into a shell running `mvn test` on the host — keep them out of `.env` regardless of how it's loaded.
 
 ### Database reset behavior
 

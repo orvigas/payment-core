@@ -38,8 +38,6 @@
     <!-- Observability -->
     <micrometer.registry.prometheus.version>1.15.12</micrometer.registry.prometheus.version>
     <micrometer.tracing.version>1.5.12</micrometer.tracing.version>
-    <!-- Tracing -->
-    <zipkin.version>2.17.1</zipkin.version>
     <!-- Logging -->
     <logstash.logback.version>7.3</logstash.logback.version>
     <!-- JWT -->
@@ -183,10 +181,29 @@
       <version>${micrometer.tracing.version}</version>
     </dependency>
 
+    <!-- Version intentionally left unmanaged here - Spring Boot's BOM controls it. An
+         earlier explicit pin to 2.17.1 was missing zipkin2.reporter.Encoding, a class
+         ZipkinAutoConfiguration requires, which silently disabled span export entirely. -->
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-reporter</artifactId>
-      <version>${zipkin.version}</version>
+    </dependency>
+
+    <!-- Concrete HTTP sender for the Zipkin reporter above; without it Spring Boot's
+         ZipkinAutoConfiguration has no Sender bean to construct, so spans are created and
+         sampled but never transported anywhere. -->
+    <dependency>
+      <groupId>io.zipkin.reporter2</groupId>
+      <artifactId>zipkin-sender-urlconnection</artifactId>
+    </dependency>
+
+    <!-- Bridges the Zipkin Sender/Reporter above onto Brave's Tracing as a SpanHandler.
+         Without AsyncZipkinSpanHandler (only in this module), the Sender/Reporter beans get
+         created but are never attached to Brave, so finished spans are simply discarded
+         instead of being handed to the reporter. -->
+    <dependency>
+      <groupId>io.zipkin.reporter2</groupId>
+      <artifactId>zipkin-reporter-brave</artifactId>
     </dependency>
 
     <!-- Structured Logging (JSON) -->

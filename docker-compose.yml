@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: payment-db
     environment:
-      POSTGRES_DB: payment_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-payment_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
@@ -79,6 +79,10 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: payment-jaeger
+    environment:
+      # Without this, the all-in-one image never opens its Zipkin-compatible
+      # HTTP collector, even though port 9411 is published below.
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
     ports:
       - "5775:5775/udp"
       - "6831:6831/udp"
@@ -104,12 +108,21 @@ services:
       dockerfile: Dockerfile
     container_name: payment-core-app
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-payment_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Hardcoded rather than sourced from .env: this hostname only resolves inside the
+      # Docker network. springboot3-dotenv loads .env into every Spring Boot process,
+      # including `mvn test` on the host, so putting it in .env breaks tests instead.
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_ZIPKIN_BASE_URL: http://jaeger:9411
-      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+      DB_RESET_ON_STARTUP: ${DB_RESET_ON_STARTUP:-true}
+      # Hardcoded for the same reason as SPRING_KAFKA_BOOTSTRAP_SERVERS above. This is
+      # also the property Micrometer Tracing's Zipkin reporter actually binds to;
+      # SPRING_ZIPKIN_BASE_URL (the old Sleuth-era name) has no effect on this stack.
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://jaeger:9411/api/v2/spans
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: ${MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED:-true}
     ports:
       - "8080:8080"
       - "5005:5005" # Debug port
@@ -143,7 +156,7 @@ services:
       payment-core:
         condition: service_healthy
     environment:
-      PGPASSWORD: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./loadtest/seed-load-test-user.sql:/seed-load-test-user.sql:ro
     entrypoint: [ "psql", "-h", "postgres", "-U", "postgres", "-d", "payment_db", "-f", "/seed-load-test-user.sql" ]
