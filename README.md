@@ -199,12 +199,18 @@ docs/                        # Architecture, deployment, performance, and securi
 
 Copy `.env.example` to `.env` and adjust as needed. Docker Compose reads it automatically and passes the values into containers as real environment variables; for non-Docker runs (`mvn spring-boot:run`, k6), export it into your shell first: `set -a; source .env; set +a`. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full workflow.
 
-| Variable | Default | Purpose |
+Every credential-shaped value in `.env.example` (`POSTGRES_PASSWORD`, `JWT_SECRET`, `GRAFANA_ADMIN_PASSWORD`, `LOAD_TEST_PASSWORD`) ships as a generic `CHANGEME` placeholder rather than a real-looking default, so the file doesn't trip secret scanning even though nothing in it is a real secret. The table below documents the actual conventional values this project uses locally — fill those in for a working dev setup, and generate your own for anything beyond local development:
+
+| Variable | Local dev value | Purpose |
 |---|---|---|
 | `POSTGRES_DB` / `_USER` / `_PASSWORD` | `payment_db` / `postgres` / `postgres` | Database name and credentials, reused for the datasource connection and the seed job. |
-| `JWT_SECRET` | insecure placeholder | JWT signing key; at least 32 characters. Must be set in any shared environment. |
+| `JWT_SECRET` | any random string, 32+ characters | JWT signing key. The app refuses to start below 32 characters (HS256's minimum key size). Must be a real random value in any shared environment. |
 | `JWT_EXPIRATION` | `3600000` | Access token lifetime (ms); refresh tokens live 7x longer. |
 | `DB_RESET_ON_STARTUP` | `true` | Flyway cleans and re-migrates on every boot. Set `false` to keep data across restarts. |
+| `MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED` | `true` | Enables the `/actuator/prometheus` exporter. |
+| `GRAFANA_ADMIN_USER` / `_PASSWORD` | `admin` / `admin` | Grafana login (`http://localhost:3000`). |
+| `BASE_URL` | `http://localhost:8080` | Target host for the k6 load test scripts. |
+| `LOAD_TEST_USERNAME` / `_PASSWORD` | `load_test_user` / `LoadTest123!` | Must match the fixture account `loadtest/seed-load-test-user.sql` creates (a fixed bcrypt hash, not read from `.env`) — k6 login fails if this doesn't match exactly. |
 
 Kafka and Jaeger endpoints are set directly in `docker-compose.yml`, not through `.env` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for why.
 
