@@ -1,7 +1,6 @@
 # Payment Core System
 
-[![Build Status](https://github.com/orvigas/payment-core/actions/workflows/ci.yml/badge.svg)](https://github.com/orvigas/payment-core/actions)
-[![Code Coverage](https://codecov.io/gh/orvigas/payment-core/branch/main/graph/badge.svg)](https://codecov.io/gh/orvigas/payment-core)
+[![Release](https://img.shields.io/github/v/release/orvigas/payment-core)](https://github.com/orvigas/payment-core/releases/latest)
 
 A payment processing service built with Spring Boot 3, PostgreSQL, and Apache Kafka. It exposes a JWT-secured REST API for payment operations, processes charges asynchronously through Kafka events, and ships with a full local observability stack (Prometheus, Jaeger) and a k6 load testing suite.
 
@@ -15,6 +14,7 @@ A payment processing service built with Spring Boot 3, PostgreSQL, and Apache Ka
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication flow, endpoint authorization, rate limiting, known gaps before production |
 | [loadtest/README.md](loadtest/README.md) | k6 test scenarios, seeding, thresholds, troubleshooting |
 | [docs/INSOMNIA-COLLECTION.md](docs/INSOMNIA-COLLECTION.md) | Importable API collection for manual testing |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes per release |
 
 ## Features
 
@@ -38,7 +38,7 @@ A payment processing service built with Spring Boot 3, PostgreSQL, and Apache Ka
 | Language / Framework | Java 21 LTS, Spring Boot 3.5.16 (Spring 6.2.x) |
 | Persistence | PostgreSQL 15, Spring Data JPA (Hibernate), Flyway migrations, HikariCP |
 | Security | Spring Security, JWT (jjwt, HMAC-SHA256), BCrypt |
-| Messaging | Apache Kafka (Confluent images), Spring Kafka 3.1.2, JSON serialization |
+| Messaging | Apache Kafka (Confluent images), Spring Kafka 3.3.16, JSON serialization |
 | Resilience | Resilience4j (circuit breaker, retry, time limiter, rate limiter) |
 | Observability | Spring Boot Actuator, Micrometer, Prometheus, Jaeger (via Zipkin protocol), Grafana, Loki (via loki-logback-appender) |
 | API docs | springdoc-openapi 2.8.6 (2.8.x is required for Spring Boot 3.5; older versions fail at runtime) |
