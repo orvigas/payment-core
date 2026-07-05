@@ -45,3 +45,6 @@ build/
 # Application
 logs/
 *.log
+
+# Load test output
+loadtest/results/
