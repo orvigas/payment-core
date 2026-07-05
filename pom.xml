@@ -40,7 +40,7 @@
     <micrometer.registry.prometheus.version>1.15.12</micrometer.registry.prometheus.version>
     <micrometer.tracing.version>1.5.12</micrometer.tracing.version>
     <!-- Logging -->
-    <logstash.logback.version>7.3</logstash.logback.version>
+    <logstash.logback.version>9.0</logstash.logback.version>
     <!-- JWT -->
     <jjwt.version>0.12.7</jjwt.version>
     <!-- Validation -->
@@ -261,6 +261,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-configuration-processor</artifactId>
       <optional>true</optional>
+    </dependency>
+
+    <!-- LOKI LOGGING -->
+    <dependency>
+      <groupId>com.github.loki4j</groupId>
+      <artifactId>loki-logback-appender</artifactId>
+      <version>2.0.3</version>
     </dependency>
   </dependencies>
 

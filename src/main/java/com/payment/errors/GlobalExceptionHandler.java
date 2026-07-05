@@ -1,6 +1,7 @@
 package com.payment.errors;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -107,11 +108,20 @@ public class GlobalExceptionHandler {
    * @return ResponseEntity with error details
    */
   private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message) {
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("timestamp", LocalDateTime.now());
-    body.put("status", status.value());
-    body.put("error", status.getReasonPhrase());
-    body.put("message", message);
-    return new ResponseEntity<>(body, status);
+    // Thread-local MDC survives across requests on pooled Tomcat threads, so it must be
+    // cleared here or a later, unrelated request could inherit this error's status/message.
+    MDC.put("http_status_code", String.valueOf(status.value()));
+    MDC.put("error_message", message);
+    try {
+      Map<String, Object> body = new LinkedHashMap<>();
+      body.put("timestamp", LocalDateTime.now());
+      body.put("status", status.value());
+      body.put("error", status.getReasonPhrase());
+      body.put("message", message);
+      return new ResponseEntity<>(body, status);
+    } finally {
+      MDC.remove("http_status_code");
+      MDC.remove("error_message");
+    }
   }
 }

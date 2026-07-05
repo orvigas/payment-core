@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <property name="APP_NAME" value="payment-core" />
+  <property name="LOG_FILE" value="logs/payment-core.log" />
+
+  <!-- LOKI_URL comes from docker-compose; falls back to localhost for local (non-container) runs -->
+  <springProperty scope="context" name="LOKI_HOST" source="LOKI_URL" defaultValue="http://localhost:3100" />
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>
+        %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+      </pattern>
+    </encoder>
+  </appender>
+
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_FILE}</file>
+    <encoder>
+      <pattern>
+        %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+      </pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>logs/payment-core.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <maxFileSize>10MB</maxFileSize>
+      <maxHistory>10</maxHistory>
+      <totalSizeCap>100MB</totalSizeCap>
+    </rollingPolicy>
+  </appender>
+
+  <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+    <http>
+      <url>${LOKI_HOST}/loki/api/v1/push</url>
+    </http>
+
+    <batch>
+      <maxItems>100</maxItems>
+      <timeoutMs>10000</timeoutMs>
+    </batch>
+
+    <!-- Stream labels: app/service/environment are low-cardinality, so they belong here rather than in the JSON body.
+         Loki4jAppender splits pairs on newlines, not commas - keep one per line.
+         MDC fields are included when set by exception handlers. -->
+    <labels>
+      app=${APP_NAME}
+      host=${HOSTNAME}
+      level=%level
+      service=payment-processing
+      environment=development
+    </labels>
+
+    <message class="com.github.loki4j.logback.JsonLayout" />
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="FILE" />
+    <appender-ref ref="LOKI" />
+  </root>
+
+  <!-- Per-package overrides -->
+  <logger name="com.payment" level="DEBUG" />
+  <logger name="com.payment.controllers" level="DEBUG" />
+  <logger name="com.payment.services" level="DEBUG" />
+  <logger name="com.payment.repositories" level="DEBUG" />
+
+  <!-- Keep framework logging at INFO; web and Kafka bumped to DEBUG while this integration is new -->
+  <logger name="org.springframework" level="INFO" />
+  <logger name="org.springframework.web" level="DEBUG" />
+  <logger name="org.springframework.kafka" level="DEBUG" />
+  <logger name="org.springframework.data" level="INFO" />
+
+  <logger name="org.apache.kafka" level="INFO" />
+  <logger name="kafka" level="INFO" />
+
+  <!-- Hibernate itself is noisy at DEBUG; keep SQL statements visible -->
+  <logger name="org.hibernate" level="WARN" />
+  <logger name="org.hibernate.SQL" level="DEBUG" />
+  <!-- Bind parameter values (payment amounts, user IDs, etc.) now flow to Loki, so keep this
+       at WARN rather than TRACE to avoid shipping that data to a centralized log store. -->
+  <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN" />
+
+  <logger name="org.postgresql" level="INFO" />
+  <logger name="io.github.resilience4j" level="DEBUG" />
+  <logger name="io.jaegertracing" level="INFO" />
+  <logger name="io.micrometer" level="INFO" />
+
+  <!-- WARN to avoid the appender logging its own push failures back into itself -->
+  <logger name="com.github.loki4j" level="WARN" />
+  <logger name="net.logstash.logback" level="WARN" />
+
+  <springProfile name="dev">
+    <root level="DEBUG">
+      <appender-ref ref="CONSOLE" />
+      <appender-ref ref="FILE" />
+      <appender-ref ref="LOKI" />
+    </root>
+  </springProfile>
+
+  <springProfile name="test">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE" />
+    </root>
+  </springProfile>
+
+  <springProfile name="prod">
+    <root level="WARN">
+      <appender-ref ref="FILE" />
+      <appender-ref ref="LOKI" />
+    </root>
+  </springProfile>
+
+</configuration>

@@ -55,11 +55,12 @@ docker-compose down           # stop
 | `prometheus` | prom/prometheus | 9090 | Metrics scraping |
 | `jaeger` | jaegertracing/all-in-one | 16686 (UI), 9411 (collector) | Distributed tracing, plus Service Performance Monitor (reads RED metrics from Prometheus) |
 | `otel-collector` | otel/opentelemetry-collector-contrib | 8889 (span metrics) | Forwards spans to Jaeger unchanged while deriving SPM metrics from them |
-| `grafana` | grafana/grafana | 3000 | Dashboards over Prometheus and Jaeger, auto-provisioned from `grafana/` |
+| `loki` | grafana/loki | 3100 | Log aggregation; receives structured JSON logs pushed by the app's Loki4j appender |
+| `grafana` | grafana/grafana | 3000 | Dashboards over Prometheus, Jaeger, and Loki, auto-provisioned from `grafana/` |
 | `payment-core` | built from `Dockerfile` | 8080 (HTTP), 5005 (debug) | The application |
 | `db-seed` | postgres:15-alpine | - | Seeds the load test user, then exits |
 
-All services share the `payment-network` bridge network. Postgres, Prometheus, and Grafana data live in named volumes (`postgres_data`, `prometheus_data`, `grafana_data`) and survive `docker-compose down`; use `down -v` to wipe them.
+All services share the `payment-network` bridge network. Postgres, Prometheus, Grafana, and Loki data live in named volumes (`postgres_data`, `prometheus_data`, `grafana_data`, `loki_data`) and survive `docker-compose down`; use `down -v` to wipe them.
 
 ### Startup ordering
 
@@ -68,9 +69,10 @@ Compose enforces a healthcheck chain rather than plain start ordering:
 1. `postgres`, `zookeeper`, `prometheus`, `jaeger` become healthy.
 2. `kafka` starts after `zookeeper` is healthy.
 3. `otel-collector` starts after `jaeger` is healthy. It has no container healthcheck of its own — the `otelcol-contrib` image ships only the collector binary, with no shell or `wget`/`curl` to run a check with — so dependents use `service_started` rather than `service_healthy` for it; the collector is ready within about a second of starting.
-4. `grafana` starts after `prometheus` and `jaeger` are healthy, and provisions its datasources and dashboards from `grafana/` on that same startup — nothing to import by hand.
-5. `payment-core` starts after `postgres`, `kafka`, `prometheus`, `jaeger`, and `otel-collector` are all up, and is itself considered healthy once `/actuator/health` responds.
-6. `db-seed` runs `loadtest/seed-load-test-user.sql` only after `payment-core` is healthy.
+4. `loki` starts alongside the rest of the stack. Same situation as `otel-collector`: the `grafana/loki` image ships only the `loki` binary, so there's no shell or `wget`/`curl` for an exec healthcheck against `/ready` — dependents use `service_started` instead of `service_healthy`.
+5. `grafana` starts after `prometheus` and `jaeger` are healthy, and provisions its datasources (including Loki) and dashboards from `grafana/` on that same startup — nothing to import by hand.
+6. `payment-core` starts after `postgres`, `kafka`, `prometheus`, `jaeger`, `otel-collector`, and `loki` are all up, and is itself considered healthy once `/actuator/health` responds.
+7. `db-seed` runs `loadtest/seed-load-test-user.sql` only after `payment-core` is healthy.
 
 The seed job waits on the application rather than on Postgres because the app's Flyway run is what creates the `users` and `user_roles` tables — seeding after Postgres alone would race the migrations. It also reruns on every startup, not just the first, because the default `DB_RESET_ON_STARTUP=true` wipes the schema on each boot (see below).
 
@@ -87,7 +89,7 @@ Configuration lives in `src/main/resources/application.yml` and is overridden th
 | `MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED` | `true` | Enables the `/actuator/prometheus` exporter. |
 | `GRAFANA_ADMIN_USER` / `_PASSWORD` | `admin` / `admin` | Grafana login (`http://localhost:3000`). |
 
-`SPRING_KAFKA_BOOTSTRAP_SERVERS` (`kafka:9092`) and `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` (`http://otel-collector:9411/api/v2/spans`) are set directly in `docker-compose.yml` rather than through `.env`. Both are Docker-network-only hostnames that would break Kafka client construction with unresolvable bootstrap URLs if `.env` were ever sourced into a shell running `mvn test` on the host — keep them out of `.env` regardless of how it's loaded. The Zipkin endpoint points at `otel-collector` rather than `jaeger` directly so spans also feed the Service Performance Monitor pipeline (see below); the collector forwards every span on to Jaeger unchanged.
+`SPRING_KAFKA_BOOTSTRAP_SERVERS` (`kafka:9092`), `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` (`http://otel-collector:9411/api/v2/spans`), and `LOKI_URL` (`http://loki:3100`) are set directly in `docker-compose.yml` rather than through `.env`. All three are Docker-network-only hostnames that would break client construction with unresolvable URLs if `.env` were ever sourced into a shell running `mvn test` on the host — keep them out of `.env` regardless of how it's loaded. The Zipkin endpoint points at `otel-collector` rather than `jaeger` directly so spans also feed the Service Performance Monitor pipeline (see below); the collector forwards every span on to Jaeger unchanged. `LOKI_URL` is read by `logback-spring.xml` via a `springProperty`, with `http://localhost:3100` as the fallback for running the app outside Docker.
 
 ### Database reset behavior
 
@@ -107,6 +109,7 @@ open http://localhost:8080/swagger-ui.html      # API docs
 open http://localhost:9090                      # Prometheus
 open http://localhost:16686                     # Jaeger
 open http://localhost:3000                      # Grafana (admin/admin by default)
+curl http://localhost:3100/ready                # Loki (no UI of its own; query it through Grafana)
 ```
 
 Actuator exposes Kubernetes-style liveness and readiness probes (`management.endpoint.health.probes.enabled=true`), so `/actuator/health/liveness` and `/actuator/health/readiness` are ready to be wired into probe definitions when Kubernetes manifests are added to `k8s/`.
@@ -118,18 +121,22 @@ Actuator exposes Kubernetes-style liveness and readiness probes (`management.end
 ```text
 grafana/
 ├── provisioning/
-│   ├── datasources/datasources.yml   # Prometheus (default) and Jaeger, with fixed uids
+│   ├── datasources/datasources.yml   # Prometheus (default), Jaeger, and Loki, with fixed uids
 │   └── dashboards/dashboards.yml     # tells Grafana to auto-load ../../dashboards on startup
 └── dashboards/
     ├── payment-core-overview.json    # application dashboard
-    └── jaeger-spm.json               # tracing/SPM dashboard
+    ├── jaeger-spm.json               # tracing/SPM dashboard
+    ├── loki-logs.json                # log volume and error-rate overview
+    └── loki-logs-detailed.json       # per-level log tables and drill-down
 ```
 
 The **Payment Core - Overview** dashboard (in the "Payment Core" folder) covers, in order: payment throughput and outcomes, payment/charge processing latency (P50/P95/P99), HTTP endpoint average latency, Resilience4j state (circuit breakers, retries, rate limiter permits, time limiter outcomes — see [docs/PERFORMANCE.md](PERFORMANCE.md)), infrastructure (HikariCP pool, JVM heap, GC pause, CPU), the Kafka producer/consumer pipeline, and links out to Jaeger for trace drill-down.
 
 The **Jaeger - Service Performance Monitor** dashboard covers the span-derived RED metrics (request rate, error rate, P50/P95/P99 duration by operation, filterable via an `operation` template variable) plus Jaeger's own internal operational health (spans received/saved/rejected/dropped, collector queue depth, collector and storage latency) — see the Service Performance Monitor section below for where these come from.
 
-Both dashboards are read-only from the Grafana UI (`allowUiUpdates: false` in `dashboards.yml`) so the JSON files are always the single source of truth — a saved UI edit would otherwise live only in Grafana's database and get silently reverted the next time the provisioner reconciles against the files. To change a panel, edit the relevant JSON file directly and either restart the `grafana` container or wait up to 30 s (`updateIntervalSeconds`) for it to reload automatically.
+The **Payment Core - Loki Logs** and **Payment Core - Loki Logs (Detailed)** dashboards read from the Loki datasource: log volume and error rate over time, distribution by level/host/app, and tables of recent error/warning log lines for drill-down. Logs are shipped by `logback-spring.xml`'s `LOKI` appender (`Loki4jAppender`, JSON body, labels `app`/`host`/`level`/`service`/`environment`); `GlobalExceptionHandler` enriches error logs with `http_status_code` and `error_message` via MDC before every error response, and clears them afterward so the fields never leak into an unrelated request's logs on a reused thread.
+
+All four dashboards are read-only from the Grafana UI (`allowUiUpdates: false` in `dashboards.yml`) so the JSON files are always the single source of truth — a saved UI edit would otherwise live only in Grafana's database and get silently reverted the next time the provisioner reconciles against the files. To change a panel, edit the relevant JSON file directly and either restart the `grafana` container or wait up to 30 s (`updateIntervalSeconds`) for it to reload automatically.
 
 After a fresh startup, a quick smoke test is logging in with the seeded load test user (`load_test_user` / `LoadTest123!`) and creating a payment; `loadtest/README.md` documents this flow.
 

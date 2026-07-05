@@ -154,6 +154,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_healthy
+      loki:
+        condition: service_started
     networks:
       - payment-network
     healthcheck:
@@ -187,6 +189,7 @@ services:
       # forwards the same spans on to Jaeger unchanged.
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://otel-collector:9411/api/v2/spans
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: ${MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED:-true}
+      LOKI_URL: http://loki:3100
     ports:
       - "8080:8080"
       - "5005:5005" # Debug port
@@ -209,6 +212,21 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  loki:
+    container_name: payment-loki
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - payment-network
+    # The grafana/loki image ships only the loki binary - no shell, wget, or curl -
+    # so there's no way to run an exec-based healthcheck against /ready. Dependents
+    # use condition: service_started instead of service_healthy.
 
   # Seeds the load-test accounts (loadtest/payment-load-test.js and the wave-test
   # scenario's 100 accounts) after every startup. app.database.reset-on-startup wipes
@@ -239,3 +257,4 @@ volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  loki_data:

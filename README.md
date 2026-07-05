@@ -40,7 +40,7 @@ A payment processing service built with Spring Boot 3, PostgreSQL, and Apache Ka
 | Security | Spring Security, JWT (jjwt, HMAC-SHA256), BCrypt |
 | Messaging | Apache Kafka (Confluent images), Spring Kafka 3.1.2, JSON serialization |
 | Resilience | Resilience4j (circuit breaker, retry, time limiter, rate limiter) |
-| Observability | Spring Boot Actuator, Micrometer, Prometheus, Jaeger (via Zipkin protocol) |
+| Observability | Spring Boot Actuator, Micrometer, Prometheus, Jaeger (via Zipkin protocol), Grafana, Loki (via loki-logback-appender) |
 | API docs | springdoc-openapi 2.8.6 (2.8.x is required for Spring Boot 3.5; older versions fail at runtime) |
 | Testing | JUnit 5, Mockito, H2 in-memory database, embedded Kafka (spring-kafka-test), JaCoCo 0.8.12 |
 | Build / Runtime | Maven 3.8+, Docker, Docker Compose, Lombok |
@@ -186,6 +186,7 @@ src/main/java/com/payment/
 
 src/main/resources/
 ├── application.yml
+├── logback-spring.xml   # console, rolling-file, and Loki (Loki4jAppender) appenders
 └── db/migration/    # Flyway V001__initial_schema.sql ... V008__add_payments_user_fk.sql
 
 src/test/java/com/payment/   # ~260 tests: controllers, security, services, kafka, config,
@@ -239,8 +240,24 @@ With `docker-compose up -d`:
 | Prometheus metrics (raw) | `http://localhost:8080/actuator/prometheus` |
 | Prometheus dashboard | `http://localhost:9090` |
 | Jaeger tracing UI | `http://localhost:16686` |
+| Grafana dashboards | `http://localhost:3000` (admin/admin by default) |
+| Loki (log aggregation, queried via Grafana) | `http://localhost:3100` |
 
 Custom metrics (`com.payment.observability.CustomMetrics`) cover payment/charge counters, processing timers with P50/P95/P99 percentiles, and circuit breaker gauges. Resilience thresholds and the reasoning behind them are documented in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+
+Structured JSON logs are shipped to Loki by `logback-spring.xml` alongside the existing console and rolling-file output. `GlobalExceptionHandler` enriches error logs with `http_status_code` and `error_message` via MDC for the duration of the error response, then clears them, so error log lines are queryable by status code in Loki without that context bleeding into unrelated requests. Grafana auto-provisions four dashboards on startup (`grafana/dashboards/`), all read-only from the UI so the checked-in JSON stays the source of truth:
+
+![Payment Core Overview dashboard](screenshots/payment-core-overview.png)
+
+*Payment Core - Overview: payment throughput, processing latency, Resilience4j state, infrastructure, and the Kafka pipeline.*
+
+![Jaeger Service Performance Monitor dashboard](screenshots/jaeger-service-performance-monitor.png)
+
+*Jaeger - Service Performance Monitor: span-derived request/error/duration metrics by operation, plus Jaeger's own collector health.*
+
+![Loki logs detailed dashboard](screenshots/grafana_payment-core-loki-logs-detailed.png)
+
+*Payment Core - Loki Logs (Detailed): log volume and error rate over time, distribution by level/host/app, and drill-down tables for recent errors and warnings.*
 
 Load tests use k6 and log in with the seeded `load_test_user` before creating payments:
 
