@@ -6,6 +6,12 @@ Notable changes to this project. Format loosely follows [Keep a Changelog](https
 
 Nothing yet.
 
+## [1.1.2] - 2026-07-05
+
+### Fixed
+
+- **Broken Docker build:** `Dockerfile`'s final `COPY --from=builder` stage hardcoded `payment-core-1.0.0.jar`, a filename that hasn't existed since the `pom.xml` version moved to 1.1.0. Every `docker build` since then failed at that step with a missing-file error. Replaced the hardcoded filename with a glob, `payment-core-*.jar`, so the build no longer needs updating on every version bump. Spring Boot's repackage plugin also leaves a `payment-core-<version>.jar.original` file in `target/`, but that name ends in `.jar.original` rather than `.jar`, so the glob still resolves to a single match.
+
 ## [1.1.1] - 2026-07-05
 
 ### Documentation & Accuracy
@@ -78,6 +84,8 @@ Initial release. Complete backend payment processing system with event-driven ar
 - k6 load testing suite (progressive ramp, steady-state, spike, and wave scenarios) with seeded credentials.
 - Around 259 unit and integration tests, with a 95% instruction coverage minimum enforced via JaCoCo.
 
-[Unreleased]: https://github.com/orvigas/payment-core/compare/v1.1...HEAD
+[Unreleased]: https://github.com/orvigas/payment-core/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/orvigas/payment-core/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/orvigas/payment-core/compare/v1.1...v1.1.1
 [1.1]: https://github.com/orvigas/payment-core/compare/v1.0...v1.1
 [1.0]: https://github.com/orvigas/payment-core/releases/tag/v1.0

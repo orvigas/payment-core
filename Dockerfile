@@ -25,7 +25,7 @@ FROM amazoncorretto:23-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/target/payment-core-1.0.0.jar app.jar
+COPY --from=builder /app/target/payment-core-*.jar app.jar
 
 EXPOSE 8080 5005
 
